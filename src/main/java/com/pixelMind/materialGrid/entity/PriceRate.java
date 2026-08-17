@@ -1,6 +1,5 @@
 package com.pixelMind.materialGrid.entity;
 
-import com.pixelMind.materialGrid.entity.enums.PriceRateStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,43 +17,24 @@ public class PriceRate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "idprice_rate")
     private Long id;
 
     @Column(name = "price", nullable = false, precision = 19, scale = 4)
     private BigDecimal price;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    private PriceRateStatus status;
+    private boolean active;
 
-    @Column(name = "added_by", nullable = false, length = 50)
-    private String addedBy;
+    private String createdBy;
 
-    @Column(name = "added_date", nullable = false, updatable = false)
-    private LocalDateTime addedDate;
+    private LocalDateTime createdDate;
 
-    @Column(name = "modified_by", length = 50)
-    private String modifiedBy;
+    private String updatedBy;
 
-    @Column(name = "modified_date", nullable = false)
-    private LocalDateTime modifiedDate;
+    private LocalDateTime updatedDate;
 
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
 
-    @PrePersist
-    protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        this.addedDate = now;
-        this.modifiedDate = now;
-        if (this.status == null) {
-            this.status = PriceRateStatus.INACTIVE;
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.modifiedDate = LocalDateTime.now();
-    }
 }

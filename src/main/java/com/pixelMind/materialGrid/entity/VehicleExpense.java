@@ -48,7 +48,7 @@ public class VehicleExpense extends BaseAuditableEntity {
     private BigDecimal expenses;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "vehicle_id", nullable = false)
+    @JoinColumn(name = "vehicle_idvehicle", nullable = false)
     private Vehicle vehicle;
 
     @Column(name = "deleted", nullable = false)

@@ -27,6 +27,7 @@ public class Vehicle extends BaseAuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "idvehicle")
     private Long id;
 
     // User-supplied, unlike routeCode/licenseCode - validated for format and

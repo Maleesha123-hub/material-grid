@@ -28,6 +28,7 @@ public class Route extends BaseAuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "idroute")
     private Long id;
 
     // Assigned server-side by CodeGeneratorService before the first save -
@@ -42,6 +43,8 @@ public class Route extends BaseAuditableEntity {
     @Column(name = "end_location", nullable = false, length = 150)
     private String endLocation;
 
-    @Column(name = "km", nullable = false, precision = 10, scale = 2)
-    private BigDecimal km;
+    @Column(name = "km", nullable = false)
+    private double km;
+
+    private BigDecimal price;
 }

@@ -15,7 +15,7 @@ public class RouteResponse {
     private String routeCode;
     private String startLocation;
     private String endLocation;
-    private BigDecimal km;
+    private double km;
     private String createdBy;
     private LocalDateTime createdDate;
     private String modifiedBy;

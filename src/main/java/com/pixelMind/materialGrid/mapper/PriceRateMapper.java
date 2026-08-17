@@ -12,13 +12,6 @@ public class PriceRateMapper {
             return null;
         }
         return PriceRateResponse.builder()
-                .id(priceRate.getId())
-                .price(priceRate.getPrice())
-                .status(priceRate.getStatus())
-                .addedBy(priceRate.getAddedBy())
-                .addedDate(priceRate.getAddedDate())
-                .modifiedBy(priceRate.getModifiedBy())
-                .modifiedDate(priceRate.getModifiedDate())
                 .build();
     }
 }

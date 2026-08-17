@@ -12,5 +12,5 @@ public final class ExcelConstants {
 
     public static final List<String> VEHICLE_EXPENSE_HEADERS = List.of("Date", "Vehicle Number", "Expense");
 
-    public static final List<String> DAILY_ROUTE_HEADERS = List.of("Date", "Vehicle Number", "Route Code", "Check By");
+    public static final List<String> DAILY_ROUTE_HEADERS = List.of("Date", "Route_Code", "Bill_Number", "Cube", "KM", "Daily_Expenses", "Vehicle_Number", "Land_Code");
 }

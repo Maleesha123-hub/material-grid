@@ -16,22 +16,25 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Vehicles", description = "Vehicle management with user-provided, unique vehicle numbers")
+import java.util.List;
+
+@Tag(name = "Vehicles", description = "Vehicle management with search and CRUD operations")
 @RestController
-@RequestMapping("/api/v1/vehicles")
+@RequestMapping(value = "/api/material-grid/vehicles")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class VehicleController {
 
     private final VehicleService vehicleService;
 
-    @Operation(summary = "Create a vehicle")
-    @PostMapping
-    public ResponseEntity<ApiResponse<VehicleResponse>> create(@Valid @RequestBody VehicleCreateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Vehicle created successfully", vehicleService.createVehicle(request)));
+    @Operation(summary = "Search vehicles (auto-complete / dropdown query)")
+    @GetMapping(value = "/search")
+    public ResponseEntity<ApiResponse<List<VehicleResponse>>> search(@RequestParam(required = false) String query) {
+        List<VehicleResponse> vehicles = vehicleService.searchVehicles(query);
+        return ResponseEntity.ok(ApiResponse.success("Vehicles retrieved successfully", vehicles));
     }
 
-    @Operation(summary = "List vehicles (paginated, sortable, searchable by vehicle number)")
+    @Operation(summary = "List vehicles (paginated, searchable by vehicle number)")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<VehicleResponse>>> getAll(
             @RequestParam(required = false) String search,
@@ -46,14 +49,21 @@ public class VehicleController {
         return ResponseEntity.ok(ApiResponse.success("Vehicle retrieved successfully", vehicleService.getVehicle(id)));
     }
 
-    @Operation(summary = "Update a vehicle (vehicleNumber is immutable)")
+    @Operation(summary = "Create a vehicle")
+    @PostMapping
+    public ResponseEntity<ApiResponse<VehicleResponse>> create(@Valid @RequestBody VehicleCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Vehicle created successfully", vehicleService.createVehicle(request)));
+    }
+
+    @Operation(summary = "Update a vehicle")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<VehicleResponse>> update(
             @PathVariable Long id, @Valid @RequestBody VehicleUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Vehicle updated successfully", vehicleService.updateVehicle(id, request)));
     }
 
-    @Operation(summary = "Delete a vehicle (blocked if expense/license/daily-route records exist)")
+    @Operation(summary = "Delete a vehicle")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         vehicleService.deleteVehicle(id);
