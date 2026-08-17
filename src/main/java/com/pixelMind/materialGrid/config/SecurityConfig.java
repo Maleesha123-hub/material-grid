@@ -87,7 +87,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/login").permitAll()
                         .requestMatchers(
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-                                "/actuator/health"
+                                "/actuator/health", "/api/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/users/**").authenticated()
                         .requestMatchers("/api/v1/auth/logout", "/api/v1/auth/me").authenticated()
@@ -97,7 +97,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/licenses/**").authenticated()
                         .requestMatchers("/api/v1/vehicle-licenses/**").authenticated()
                         .requestMatchers("/api/v1/vehicle-expenses/**").authenticated()
-                        .requestMatchers("/api/v1/daily-routes/**").authenticated()
+                        .requestMatchers("/api/v1/daily-routes/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(sessionAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
