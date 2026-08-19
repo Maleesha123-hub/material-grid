@@ -56,6 +56,9 @@ public abstract class BaseAuditableEntity {
     @Column(name = "modified_date", nullable = false)
     private LocalDateTime modifiedDate;
 
+    @Column(name = "active", nullable = false)
+    private Boolean active;
+
     @Version
     @Column(name = "version", nullable = false)
     private Long version;

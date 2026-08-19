@@ -1,14 +1,14 @@
-CREATE TABLE users (
-    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    username        VARCHAR(50)  NOT NULL,
-    password        VARCHAR(255) NOT NULL,
-    status          VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
-    created_by      VARCHAR(50),
-    created_date    DATETIME(6)  NOT NULL,
-    modified_by     VARCHAR(50),
-    modified_date   DATETIME(6)  NOT NULL,
-    version         BIGINT       NOT NULL DEFAULT 0,
-    CONSTRAINT uk_users_username UNIQUE (username)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE INDEX idx_users_status ON users (status);
+-- CREATE TABLE users (
+--     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+--     username        VARCHAR(50)  NOT NULL,
+--     password        VARCHAR(255) NOT NULL,
+--     status          VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+--     created_by      VARCHAR(50),
+--     created_date    DATETIME(6)  NOT NULL,
+--     modified_by     VARCHAR(50),
+--     modified_date   DATETIME(6)  NOT NULL,
+--     version         BIGINT       NOT NULL DEFAULT 0,
+--     CONSTRAINT uk_users_username UNIQUE (username)
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+--
+-- CREATE INDEX idx_users_status ON users (status);

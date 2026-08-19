@@ -1,5 +1,6 @@
 package com.pixelMind.materialGrid.mapper;
 
+import com.pixelMind.materialGrid.constant.StatusConstants;
 import com.pixelMind.materialGrid.dto.response.VehicleResponse;
 import com.pixelMind.materialGrid.entity.Vehicle;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ public class VehicleMapper {
                 .createdDate(vehicle.getCreatedDate())
                 .modifiedBy(vehicle.getModifiedBy())
                 .modifiedDate(vehicle.getModifiedDate())
+                .status(vehicle.getActive() ? StatusConstants.ACTIVE : StatusConstants.INACTIVE)
                 .build();
     }
 }

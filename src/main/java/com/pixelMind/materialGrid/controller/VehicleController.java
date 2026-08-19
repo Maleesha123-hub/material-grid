@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Vehicles", description = "Vehicle management with user-provided, unique vehicle numbers")
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/vehicles")
 @RequiredArgsConstructor
@@ -27,6 +29,9 @@ public class VehicleController {
     @Operation(summary = "Create a vehicle")
     @PostMapping
     public ResponseEntity<ApiResponse<VehicleResponse>> create(@Valid @RequestBody VehicleCreateRequest request) {
+
+        log.info("Received request to create vehicle {}", request);
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Vehicle created successfully", vehicleService.createVehicle(request)));
     }
@@ -43,6 +48,9 @@ public class VehicleController {
     @Operation(summary = "Get a vehicle by id")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<VehicleResponse>> getOne(@PathVariable Long id) {
+
+        log.info("Received request to get vehicle by id {}", id);
+
         return ResponseEntity.ok(ApiResponse.success("Vehicle retrieved successfully", vehicleService.getVehicle(id)));
     }
 

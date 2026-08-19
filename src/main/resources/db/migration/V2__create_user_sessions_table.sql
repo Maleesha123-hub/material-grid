@@ -1,25 +1,25 @@
-CREATE TABLE user_sessions (
-    id                BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id           BIGINT       NOT NULL,
-    session_token     VARCHAR(100) NOT NULL,
-    status            VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
-    login_date        DATETIME(6)  NOT NULL,
-    last_access_date  DATETIME(6)  NOT NULL,
-    logout_date       DATETIME(6)  NULL,
-    version           BIGINT       NOT NULL DEFAULT 0,
-
-    -- Generated column: evaluates to 1 only for the ACTIVE row of a given user,
-    -- NULL otherwise. MySQL unique indexes allow multiple NULLs but only one
-    -- non-null duplicate value, so this guarantees at most one ACTIVE session
-    -- per user at the DATABASE level, closing the race condition that pure
-    -- application-level read-then-write checks cannot fully close.
-    active_marker BIGINT AS (CASE WHEN status = 'ACTIVE' THEN user_id ELSE NULL END) STORED,
-
-    CONSTRAINT uk_user_sessions_token UNIQUE (session_token),
-    CONSTRAINT uk_user_sessions_active_per_user UNIQUE (active_marker),
-    CONSTRAINT fk_user_sessions_user FOREIGN KEY (user_id) REFERENCES users (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE INDEX idx_user_sessions_user_id ON user_sessions (user_id);
-CREATE INDEX idx_user_sessions_status ON user_sessions (status);
--- session_token already unique-indexed above, which also serves lookup performance.
+-- CREATE TABLE user_sessions (
+--     id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+--     user_id           BIGINT       NOT NULL,
+--     session_token     VARCHAR(100) NOT NULL,
+--     status            VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+--     login_date        DATETIME(6)  NOT NULL,
+--     last_access_date  DATETIME(6)  NOT NULL,
+--     logout_date       DATETIME(6)  NULL,
+--     version           BIGINT       NOT NULL DEFAULT 0,
+--
+--     -- Generated column: evaluates to 1 only for the ACTIVE row of a given user,
+--     -- NULL otherwise. MySQL unique indexes allow multiple NULLs but only one
+--     -- non-null duplicate value, so this guarantees at most one ACTIVE session
+--     -- per user at the DATABASE level, closing the race condition that pure
+--     -- application-level read-then-write checks cannot fully close.
+--     active_marker BIGINT AS (CASE WHEN status = 'ACTIVE' THEN user_id ELSE NULL END) STORED,
+--
+--     CONSTRAINT uk_user_sessions_token UNIQUE (session_token),
+--     CONSTRAINT uk_user_sessions_active_per_user UNIQUE (active_marker),
+--     CONSTRAINT fk_user_sessions_user FOREIGN KEY (user_id) REFERENCES users (id)
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+--
+-- CREATE INDEX idx_user_sessions_user_id ON user_sessions (user_id);
+-- CREATE INDEX idx_user_sessions_status ON user_sessions (status);
+-- -- session_token already unique-indexed above, which also serves lookup performance.
