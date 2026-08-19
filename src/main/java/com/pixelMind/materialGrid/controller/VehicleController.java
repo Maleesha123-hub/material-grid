@@ -3,6 +3,7 @@ package com.pixelMind.materialGrid.controller;
 import com.pixelMind.materialGrid.dto.request.VehicleCreateRequest;
 import com.pixelMind.materialGrid.dto.request.VehicleUpdateRequest;
 import com.pixelMind.materialGrid.dto.response.ApiResponse;
+import com.pixelMind.materialGrid.dto.response.BulkUploadResponse;
 import com.pixelMind.materialGrid.dto.response.PageResponse;
 import com.pixelMind.materialGrid.dto.response.VehicleResponse;
 import com.pixelMind.materialGrid.service.VehicleService;
@@ -14,8 +15,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "Vehicles", description = "Vehicle management with user-provided, unique vehicle numbers")
 @Slf4j
@@ -34,6 +37,17 @@ public class VehicleController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Vehicle created successfully", vehicleService.createVehicle(request)));
+    }
+
+    @Operation(summary = "Bulk-upload vehicles from an Excel file (Vehicle Number | Capacity(cube)). All-or-nothing.")
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<BulkUploadResponse>> upload(@RequestParam("file") MultipartFile file) {
+
+        log.info("Received request for bulk vehicle upload");
+
+        BulkUploadResponse result = vehicleService.bulkUploadVehicles(file);
+
+        return ResponseEntity.ok(ApiResponse.success(result.getMessage(), result));
     }
 
     @Operation(summary = "List vehicles (paginated, sortable, searchable by vehicle number)")

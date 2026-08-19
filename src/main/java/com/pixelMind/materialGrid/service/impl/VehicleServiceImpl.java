@@ -3,10 +3,13 @@ package com.pixelMind.materialGrid.service.impl;
 import com.pixelMind.materialGrid.constant.ErrorCodeConstants;
 import com.pixelMind.materialGrid.dto.request.VehicleCreateRequest;
 import com.pixelMind.materialGrid.dto.request.VehicleUpdateRequest;
+import com.pixelMind.materialGrid.dto.response.BulkUploadResponse;
+import com.pixelMind.materialGrid.dto.response.ExcelValidationError;
 import com.pixelMind.materialGrid.dto.response.VehicleResponse;
 import com.pixelMind.materialGrid.entity.Vehicle;
 import com.pixelMind.materialGrid.exception.BusinessException;
 import com.pixelMind.materialGrid.exception.DuplicateResourceException;
+import com.pixelMind.materialGrid.exception.ExcelValidationException;
 import com.pixelMind.materialGrid.exception.ResourceNotFoundException;
 import com.pixelMind.materialGrid.mapper.VehicleMapper;
 import com.pixelMind.materialGrid.repository.DailyRouteRepository;
@@ -14,25 +17,41 @@ import com.pixelMind.materialGrid.repository.VehicleExpenseRepository;
 import com.pixelMind.materialGrid.repository.VehicleLicenseRepository;
 import com.pixelMind.materialGrid.repository.VehicleRepository;
 import com.pixelMind.materialGrid.service.VehicleService;
+import com.pixelMind.materialGrid.util.ExcelUtil;
 import com.pixelMind.materialGrid.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.*;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class VehicleServiceImpl implements VehicleService {
 
+    private static final Pattern VEHICLE_NUMBER_PATTERN = Pattern.compile("^[A-Z0-9-]{4,20}$");
+
     private final VehicleRepository vehicleRepository;
     private final VehicleExpenseRepository vehicleExpenseRepository;
     private final VehicleLicenseRepository vehicleLicenseRepository;
     private final DailyRouteRepository dailyRouteRepository;
     private final VehicleMapper vehicleMapper;
+
+    private record RawVehicleRow(int rowNumber, String vehicleNumber, BigDecimal capacity, boolean hasFormatError) {
+    }
 
     @Override
     @Transactional
@@ -114,9 +133,169 @@ public class VehicleServiceImpl implements VehicleService {
         log.info("Vehicle deleted: id={}, by={}", id, SecurityUtil.getCurrentUsername());
     }
 
+    @Override
+    @Transactional
+    public BulkUploadResponse bulkUploadVehicles(MultipartFile file) {
+        Workbook workbook = ExcelUtil.openWorkbook(file);
+        try {
+            Sheet sheet = ExcelUtil.firstSheet(workbook);
+            Map<String, Integer> headerIndex = ExcelUtil.readHeaderIndex(sheet);
+
+            Integer vehicleCol = findHeader(headerIndex, "vehicle number", "vehiclenumber", "vehicle no", "vehicle");
+            Integer capacityCol = findHeader(headerIndex, "capacity(cube)", "capacity (cube)", "capacity( cube )", "capacity");
+
+            List<String> missingHeaders = new ArrayList<>();
+            if (vehicleCol == null) {
+                missingHeaders.add("Vehicle Number");
+            }
+            if (capacityCol == null) {
+                missingHeaders.add("Capacity(cube)");
+            }
+
+            if (!missingHeaders.isEmpty()) {
+                throw new ExcelValidationException(
+                        "Missing required column(s): " + String.join(", ", missingHeaders)
+                                + ". Expected headers: Vehicle Number, Capacity(cube)",
+                        List.of(error(0, "File", null, "Missing required column(s): " + String.join(", ", missingHeaders))),
+                        0);
+            }
+
+            List<ExcelValidationError> errors = new ArrayList<>();
+            List<RawVehicleRow> rawRows = new ArrayList<>();
+
+            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (ExcelUtil.isRowEmpty(row)) {
+                    continue;
+                }
+                int rowNumber = r + 1; // 1-indexed as seen in Excel (header = row 1)
+
+                String rawVehicleNumber = ExcelUtil.readString(row, vehicleCol);
+                String vehicleNumber = rawVehicleNumber.trim().toUpperCase();
+                boolean vehicleNumberError = false;
+
+                if (vehicleNumber.isBlank()) {
+                    errors.add(error(rowNumber, "Vehicle Number", null, "Vehicle number is required"));
+                    vehicleNumberError = true;
+                } else if (!VEHICLE_NUMBER_PATTERN.matcher(vehicleNumber).matches()) {
+                    errors.add(error(rowNumber, "Vehicle Number", vehicleNumber,
+                            "Vehicle number must be 4-20 uppercase letters, digits, or hyphens"));
+                    vehicleNumberError = true;
+                }
+
+                String rawCapacity = ExcelUtil.readString(row, capacityCol);
+                Optional<BigDecimal> capacity = ExcelUtil.readBigDecimal(row, capacityCol);
+                boolean capacityError = false;
+
+                if (rawCapacity.isBlank()) {
+                    errors.add(error(rowNumber, "Capacity", null, "Capacity is required"));
+                    capacityError = true;
+                } else if (capacity.isEmpty()) {
+                    errors.add(error(rowNumber, "Capacity", rawCapacity, "Capacity is required and must be a valid number"));
+                    capacityError = true;
+                } else if (capacity.get().compareTo(BigDecimal.ZERO) <= 0) {
+                    errors.add(error(rowNumber, "Capacity", capacity.get().toString(), "Capacity must be greater than zero"));
+                    capacityError = true;
+                }
+
+                rawRows.add(new RawVehicleRow(rowNumber, vehicleNumber, capacity.orElse(null),
+                        vehicleNumberError || capacityError));
+            }
+
+            if (rawRows.isEmpty()) {
+                throw new ExcelValidationException("The uploaded file contains no data rows",
+                        List.of(error(0, "File", null, "No data rows found")), 0);
+            }
+
+            // Duplicate detection within the uploaded file
+            Set<String> seenInFile = new HashSet<>();
+            for (RawVehicleRow raw : rawRows) {
+                if (!raw.vehicleNumber().isBlank() && !raw.hasFormatError()) {
+                    if (!seenInFile.add(raw.vehicleNumber())) {
+                        errors.add(error(raw.rowNumber(), "Vehicle Number", raw.vehicleNumber(),
+                                "Duplicate vehicle number '" + raw.vehicleNumber() + "' in uploaded file"));
+                    }
+                }
+            }
+
+            // Duplicate detection against existing records in the database
+            Set<String> distinctVehicleNumbers = rawRows.stream()
+                    .map(RawVehicleRow::vehicleNumber)
+                    .filter(v -> !v.isBlank())
+                    .collect(Collectors.toSet());
+
+            if (!distinctVehicleNumbers.isEmpty()) {
+                List<Vehicle> existingVehicles = vehicleRepository.findByVehicleNumberIn(distinctVehicleNumbers);
+                Set<String> existingVehicleNumbers = existingVehicles.stream()
+                        .map(Vehicle::getVehicleNumber)
+                        .collect(Collectors.toSet());
+
+                for (RawVehicleRow raw : rawRows) {
+                    if (existingVehicleNumbers.contains(raw.vehicleNumber())) {
+                        errors.add(error(raw.rowNumber(), "Vehicle Number", raw.vehicleNumber(),
+                                "Vehicle number '" + raw.vehicleNumber() + "' already exists"));
+                    }
+                }
+            }
+
+            if (!errors.isEmpty()) {
+                throw new ExcelValidationException("Vehicle upload validation failed", errors, rawRows.size());
+            }
+
+            String actor = SecurityUtil.getCurrentUsername();
+            List<Vehicle> entities = new ArrayList<>();
+            for (RawVehicleRow r : rawRows) {
+                entities.add(Vehicle.builder()
+                        .vehicleNumber(r.vehicleNumber())
+                        .capacity(r.capacity())
+                        .active(true)
+                        .createdBy(actor)
+                        .modifiedBy(actor)
+                        .build());
+            }
+
+            vehicleRepository.saveAll(entities);
+            log.info("Bulk vehicle upload: {} rows inserted, by={}", entities.size(), actor);
+
+            return BulkUploadResponse.builder()
+                    .success(true)
+                    .message("Vehicles uploaded successfully")
+                    .totalRows(rawRows.size())
+                    .successCount(entities.size())
+                    .errorCount(0)
+                    .errors(List.of())
+                    .build();
+        } finally {
+            try {
+                workbook.close();
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    private Integer findHeader(Map<String, Integer> headerIndex, String... possibleNames) {
+        for (String name : possibleNames) {
+            Integer col = headerIndex.get(name.trim().toLowerCase());
+            if (col != null) {
+                return col;
+            }
+        }
+        return null;
+    }
+
+    private ExcelValidationError error(int rowNumber, String field, String value, String message) {
+        return ExcelValidationError.builder()
+                .rowNumber(rowNumber)
+                .field(field)
+                .value(value)
+                .message(message)
+                .build();
+    }
+
     private Vehicle findOrThrow(Long id) {
         return vehicleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Vehicle not found with id: " + id, ErrorCodeConstants.VEHICLE_NOT_FOUND));
     }
 }
+
