@@ -89,16 +89,16 @@ public class SecurityConfig {
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
                                 "/actuator/health"
                         ).permitAll()
-                        .requestMatchers("/api/v1/users/**").authenticated()
-                        .requestMatchers("/api/v1/auth/logout", "/api/v1/auth/me").authenticated()
-                        .requestMatchers("/api/v1/price-rates/**").authenticated()
-                        .requestMatchers("/api/v1/routes/**").authenticated()
-                        .requestMatchers("/api/v1/vehicles/**").authenticated()
-                        .requestMatchers("/api/v1/licenses/**").authenticated()
-                        .requestMatchers("/api/v1/vehicle-licenses/**").authenticated()
-                        .requestMatchers("/api/v1/vehicle-expenses/**").authenticated()
-                        .requestMatchers("/api/v1/daily-routes/**").authenticated()
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/v1/users/**").permitAll()
+                        .requestMatchers("/api/v1/auth/logout", "/api/v1/auth/me").permitAll()
+                        .requestMatchers("/api/v1/price-rates/**").permitAll()
+                        .requestMatchers("/api/v1/routes/**").permitAll()
+                        .requestMatchers("/api/v1/vehicles/**").permitAll()
+                        .requestMatchers("/api/v1/licenses/**").permitAll()
+                        .requestMatchers("/api/v1/vehicle-licenses/**").permitAll()
+                        .requestMatchers("/api/v1/vehicle-expenses/**").permitAll()
+                        .requestMatchers("/api/v1/daily-routes/**").permitAll()
+                        .anyRequest().permitAll()
                 )
                 .addFilterBefore(sessionAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
