@@ -20,4 +20,5 @@ public class RouteResponse {
     private LocalDateTime createdDate;
     private String modifiedBy;
     private LocalDateTime modifiedDate;
+    private String status;
 }

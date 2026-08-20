@@ -27,5 +27,7 @@ public class RouteCreateRequest {
     @DecimalMin(value = "0.01", message = "Km must be greater than zero")
     private BigDecimal km;
 
+    private Boolean status;
+
     // routeCode is intentionally absent - generated server-side.
 }

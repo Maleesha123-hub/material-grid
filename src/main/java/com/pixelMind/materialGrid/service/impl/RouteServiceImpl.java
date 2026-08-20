@@ -53,6 +53,7 @@ public class RouteServiceImpl implements RouteService {
                 .km(request.getKm())
                 .createdBy(actor)
                 .modifiedBy(actor)
+                .active(true)
                 .build();
 
         Route saved = routeRepository.save(route);
@@ -69,6 +70,9 @@ public class RouteServiceImpl implements RouteService {
     @Override
     @Transactional(readOnly = true)
     public Page<RouteResponse> getRoutes(String search, Pageable pageable) {
+
+        log.info("RouteServiceImpl.getRoutes() => accessed : {}", search);
+
         if (StringUtils.hasText(search)) {
             return routeRepository
                     .findByStartLocationContainingIgnoreCaseOrEndLocationContainingIgnoreCase(search, search, pageable)
@@ -85,6 +89,7 @@ public class RouteServiceImpl implements RouteService {
         route.setEndLocation(request.getEndLocation());
         route.setKm(request.getKm());
         route.setModifiedBy(SecurityUtil.getCurrentUsername());
+        route.setActive(request.getStatus());
         // routeCode is never touched here - immutable by design (see
         // RouteUpdateRequest).
 

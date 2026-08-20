@@ -1,5 +1,6 @@
 package com.pixelMind.materialGrid.mapper;
 
+import com.pixelMind.materialGrid.constant.StatusConstants;
 import com.pixelMind.materialGrid.dto.response.RouteResponse;
 import com.pixelMind.materialGrid.entity.Route;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,7 @@ public class RouteMapper {
                 .createdDate(route.getCreatedDate())
                 .modifiedBy(route.getModifiedBy())
                 .modifiedDate(route.getModifiedDate())
+                .status(route.getActive() ? StatusConstants.ACTIVE : StatusConstants.INACTIVE)
                 .build();
     }
 }

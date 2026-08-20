@@ -27,5 +27,7 @@ public class RouteUpdateRequest {
     @DecimalMin(value = "0.01", message = "Km must be greater than zero")
     private BigDecimal km;
 
+    private Boolean status;
+
     // routeCode is immutable by design - not present on update either.
 }
