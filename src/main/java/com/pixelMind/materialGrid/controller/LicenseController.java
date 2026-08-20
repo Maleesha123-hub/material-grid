@@ -12,9 +12,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @Tag(name = "Licenses", description = "License management with server-generated license codes")
 @RestController
@@ -31,11 +34,13 @@ public class LicenseController {
                 .body(ApiResponse.success("License created successfully", licenseService.createLicense(request)));
     }
 
-    @Operation(summary = "List licenses (paginated, sortable)")
+    @Operation(summary = "List licenses (paginated, sortable, filterable by date range)")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<LicenseResponse>>> getAll(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @PageableDefault(size = 20, sort = "id") Pageable pageable) {
-        PageResponse<LicenseResponse> page = new PageResponse<>(licenseService.getLicenses(pageable));
+        PageResponse<LicenseResponse> page = new PageResponse<>(licenseService.getLicenses(startDate, endDate, pageable));
         return ResponseEntity.ok(ApiResponse.success("Licenses retrieved successfully", page));
     }
 

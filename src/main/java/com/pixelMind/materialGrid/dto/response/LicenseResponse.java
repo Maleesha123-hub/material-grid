@@ -21,4 +21,5 @@ public class LicenseResponse {
     private LocalDateTime createdDate;
     private String modifiedBy;
     private LocalDateTime modifiedDate;
+    private String status;
 }

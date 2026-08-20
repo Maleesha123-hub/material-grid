@@ -23,4 +23,6 @@ public class LicenseUpdateRequest {
     @NotNull(message = "Price is required")
     @DecimalMin(value = "0.0001", message = "Price must be greater than zero")
     private BigDecimal price;
+
+    private Boolean status;
 }

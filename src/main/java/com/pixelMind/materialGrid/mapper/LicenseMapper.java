@@ -1,5 +1,6 @@
 package com.pixelMind.materialGrid.mapper;
 
+import com.pixelMind.materialGrid.constant.StatusConstants;
 import com.pixelMind.materialGrid.dto.response.LicenseResponse;
 import com.pixelMind.materialGrid.entity.License;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,7 @@ public class LicenseMapper {
                 .createdDate(license.getCreatedDate())
                 .modifiedBy(license.getModifiedBy())
                 .modifiedDate(license.getModifiedDate())
+                .status(license.getActive() ? StatusConstants.ACTIVE : StatusConstants.INACTIVE)
                 .build();
     }
 }

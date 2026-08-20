@@ -21,6 +21,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -49,6 +51,7 @@ public class LicenseServiceImpl implements LicenseService {
                 .price(request.getPrice())
                 .createdBy(actor)
                 .modifiedBy(actor)
+                .active(true)
                 .build();
 
         License saved = licenseRepository.save(license);
@@ -64,8 +67,8 @@ public class LicenseServiceImpl implements LicenseService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<LicenseResponse> getLicenses(Pageable pageable) {
-        return licenseRepository.findAll(pageable).map(licenseMapper::toResponse);
+    public Page<LicenseResponse> getLicenses(LocalDate startDate, LocalDate endDate, Pageable pageable) {
+        return licenseRepository.findAllByDateRange(startDate, endDate, pageable).map(licenseMapper::toResponse);
     }
 
     @Override
@@ -78,6 +81,7 @@ public class LicenseServiceImpl implements LicenseService {
         license.setEndDate(request.getEndDate());
         license.setPrice(request.getPrice());
         license.setModifiedBy(SecurityUtil.getCurrentUsername());
+        license.setActive(request.getStatus());
         // licenseCode is immutable by design - never updated here.
 
         License saved = licenseRepository.save(license);
