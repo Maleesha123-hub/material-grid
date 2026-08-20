@@ -50,7 +50,24 @@ class LicenseServiceImplTest {
     }
 
     @Test
+    void createLicense_overlappingDateRange_isRejected() {
+        when(licenseRepository.existsOverlapping(isNull(), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(true);
+
+        LicenseCreateRequest request = new LicenseCreateRequest(
+                LocalDate.of(2026, 9, 13), LocalDate.of(2026, 9, 22), new BigDecimal("500.00"));
+
+        assertThatThrownBy(() -> licenseService.createLicense(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("overlapping date range");
+
+        verify(licenseRepository, never()).save(any());
+    }
+
+    @Test
     void createLicense_success_usesGeneratedCode() {
+        when(licenseRepository.existsOverlapping(isNull(), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(false);
         when(codeGeneratorService.nextCode(anyString(), anyString(), anyInt())).thenReturn("LIC000001");
         when(licenseRepository.save(any(License.class))).thenAnswer(inv -> inv.getArgument(0));
         when(licenseMapper.toResponse(any(License.class))).thenAnswer(inv -> {

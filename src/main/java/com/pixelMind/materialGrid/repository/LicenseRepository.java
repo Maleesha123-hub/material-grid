@@ -33,5 +33,16 @@ public interface LicenseRepository extends JpaRepository<License, Long> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             Pageable pageable);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(l) > 0 THEN TRUE ELSE FALSE END FROM License l
+            WHERE (:id IS NULL OR l.id <> :id)
+              AND l.startDate <= :endDate
+              AND l.endDate >= :startDate
+            """)
+    boolean existsOverlapping(
+            @Param("id") Long id,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 }
 

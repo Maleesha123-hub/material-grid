@@ -7,6 +7,7 @@ import com.pixelMind.materialGrid.util.PdfFileNameUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -27,6 +28,7 @@ import java.time.LocalDate;
  */
 @Tag(name = "Daily Route Reports", description = "Read-only PDF report for a single vehicle's Daily Route on a given date")
 @RestController
+@Slf4j
 @RequestMapping("/api/v1/daily-routes/report")
 @RequiredArgsConstructor
 public class DailyRouteReportController {
@@ -39,6 +41,9 @@ public class DailyRouteReportController {
     public ResponseEntity<byte[]> preview(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam Long vehicleId) {
+
+        log.info("DailyRouteReportController.preview() => accessed");
+
         return buildPdfResponse(date, vehicleId, ContentDisposition.inline());
     }
 
@@ -47,12 +52,19 @@ public class DailyRouteReportController {
     public ResponseEntity<byte[]> download(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam Long vehicleId) {
+
+        log.info("DailyRouteReportController.download() => accessed");
+
         return buildPdfResponse(date, vehicleId, ContentDisposition.attachment());
     }
 
     private ResponseEntity<byte[]> buildPdfResponse(LocalDate date, Long vehicleId,
                                                     ContentDisposition.Builder dispositionBuilder) {
+
+        log.info("DailyRouteReportController.buildPdfResponse() => accessed");
+
         DailyRouteReportResponse report = dailyRouteReportService.generateReport(date, vehicleId);
+
         byte[] pdfBytes = dailyRoutePdfService.generatePdf(report);
 
         String fileName = PdfFileNameUtil.buildFileName(report.getVehicleNumber(), report.getDate());

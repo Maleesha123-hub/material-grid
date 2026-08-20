@@ -37,6 +37,7 @@ public class LicenseServiceImpl implements LicenseService {
     @Transactional
     public LicenseResponse createLicense(LicenseCreateRequest request) {
         validateDateRange(request.getStartDate(), request.getEndDate());
+        validateNoDateOverlap(null, request.getStartDate(), request.getEndDate());
         String actor = SecurityUtil.getCurrentUsername();
 
         String licenseCode = codeGeneratorService.nextCode(
@@ -75,6 +76,7 @@ public class LicenseServiceImpl implements LicenseService {
     @Transactional
     public LicenseResponse updateLicense(Long id, LicenseUpdateRequest request) {
         validateDateRange(request.getStartDate(), request.getEndDate());
+        validateNoDateOverlap(id, request.getStartDate(), request.getEndDate());
         License license = findOrThrow(id);
 
         license.setStartDate(request.getStartDate());
@@ -107,6 +109,14 @@ public class LicenseServiceImpl implements LicenseService {
         if (endDate.isBefore(startDate)) {
             throw new BusinessException(
                     "End date must not be before start date", ErrorCodeConstants.VALIDATION_FAILED);
+        }
+    }
+
+    private void validateNoDateOverlap(Long licenseId, LocalDate startDate, LocalDate endDate) {
+        if (licenseRepository.existsOverlapping(licenseId, startDate, endDate)) {
+            throw new BusinessException(
+                    "A license already exists with an overlapping date range.",
+                    ErrorCodeConstants.VALIDATION_FAILED);
         }
     }
 
