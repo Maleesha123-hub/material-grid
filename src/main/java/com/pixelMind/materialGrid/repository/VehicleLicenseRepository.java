@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -40,11 +41,14 @@ public interface VehicleLicenseRepository extends JpaRepository<VehicleLicense, 
     List<VehicleLicense> findByVehicleIdAndDate(Long vehicleId, LocalDate date);
 
     @Query("""
-            select coalesce(sum(e.expenses), 0)
+            select coalesce(sum(e.license.price), 0)
             from VehicleLicense e
             where e.vehicle.id = :vehicleId
             and e.date = :date
             and e.status = :status
             """)
-    BigDecimal sumLicenseAmountByVehicleIdAndDate(Long vehicleId, LocalDate date, VehicleLicenseStatus status);
+    BigDecimal sumLicenseAmountByVehicleIdAndDate(
+            @Param("vehicleId") Long vehicleId,
+            @Param("date") LocalDate date,
+            @Param("status") VehicleLicenseStatus status);
 }

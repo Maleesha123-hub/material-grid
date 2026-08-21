@@ -45,7 +45,12 @@ public class DailyRouteReportController {
 
         return ResponseEntity.ok(
                 new CommonResponseDTO(
-                        dailyRouteReportService.getSummary(date, vehicleId), "", HttpStatus.OK)
+                        dailyRouteReportService.getSummary(
+                                date, vehicleId
+                        ),
+                        "Receipt summary",
+                        HttpStatus.OK
+                )
         );
 
     }

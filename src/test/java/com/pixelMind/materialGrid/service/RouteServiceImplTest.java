@@ -53,7 +53,7 @@ class RouteServiceImplTest {
             return RouteResponse.builder().id(r.getId()).routeCode(r.getRouteCode()).build();
         });
 
-        RouteCreateRequest request = new RouteCreateRequest("A", "B", new BigDecimal("12.50"));
+        RouteCreateRequest request = new RouteCreateRequest("A", "B", new BigDecimal("12.50"), true);
         RouteResponse response = routeService.createRoute(request);
 
         assertThat(response.getRouteCode()).isEqualTo("RT000042");

@@ -44,7 +44,7 @@ class RouteCodeConcurrencyIntegrationTest extends AbstractIntegrationTest {
             pool.submit(() -> {
                 try {
                     startLatch.await();
-                    routeService.createRoute(new RouteCreateRequest("A", "B", new BigDecimal("5.00")));
+                    routeService.createRoute(new RouteCreateRequest("A", "B", new BigDecimal("5.00"), true));
                 } catch (Exception ignored) {
                 } finally {
                     doneLatch.countDown();
