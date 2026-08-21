@@ -71,7 +71,6 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
                 .date(date)
                 .vehicleNumber(vehicle.getVehicleNumber())
                 .vehicleCapacity(vehicle.getCapacity())
-                .loadCount(dailyRoute.getLoadCount() != null ? dailyRoute.getLoadCount() : 0)
                 .totalAmount(totalAmount)
                 .paidAmount(paidAmount)
                 .licenceFee(licenceFee)
