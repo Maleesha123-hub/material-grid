@@ -70,10 +70,6 @@ public class DailyRoute extends BaseAuditableEntity {
     @Column(name = "check_by", nullable = false, length = 100)
     private String checkBy;
 
-    // See class Javadoc - not yet wired into CRUD/Excel import.
-//    @Column(name = "load_count")
-//    private Integer loadCount;
-
     @Column(name = "deleted", nullable = false)
     @Builder.Default
     private boolean deleted = false;

@@ -17,6 +17,8 @@ import com.pixelMind.materialGrid.repository.VehicleRepository;
 import com.pixelMind.materialGrid.service.DailyRouteReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +49,11 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
     @Override
     @Transactional(readOnly = true)
     public DailyRouteReportResponse generateReport(LocalDate date, Long vehicleId) {
+
+        if (date == null &&  vehicleId == null) {
+            return null;
+        }
+
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Vehicle with ID " + vehicleId + " does not exist", ErrorCodeConstants.VEHICLE_NOT_FOUND));
@@ -76,6 +83,18 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
                 .licenceFee(licenceFee)
                 .balance(balance)
                 .build();
+    }
+
+    @Override
+    public DailyRouteReportResponse getSummary(LocalDate date, Long vehicleId) {
+
+        Page<DailyRoute> search = dailyRouteRepository.search(
+                date, vehicleId, null, null, Pageable.unpaged()
+        );
+
+
+
+        return null;
     }
 
     private DailyRoute resolveSingleDailyRoute(Vehicle vehicle, LocalDate date) {

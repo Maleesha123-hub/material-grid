@@ -15,7 +15,7 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
 
     @Query("""
             select d from DailyRoute d
-            where d.deleted = false
+            where d.deleted = true
               and (:date is null or d.date = :date)
               and (:vehicleId is null or d.vehicle.id = :vehicleId)
               and (:routeId is null or d.route.id = :routeId)

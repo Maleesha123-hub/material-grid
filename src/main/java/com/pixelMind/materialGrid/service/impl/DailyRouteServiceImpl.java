@@ -84,7 +84,14 @@ public class DailyRouteServiceImpl implements DailyRouteService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<DailyRouteResponse> search(LocalDate date, Long vehicleId, Long routeId, Long priceRateId, Pageable pageable) {
+    public Page<DailyRouteResponse> search(
+            LocalDate date,
+            Long vehicleId,
+            Long routeId,
+            Long priceRateId,
+            Pageable pageable
+    ) {
+
         return dailyRouteRepository.search(date, vehicleId, routeId, priceRateId, pageable)
                 .map(dailyRouteMapper::toResponse);
     }

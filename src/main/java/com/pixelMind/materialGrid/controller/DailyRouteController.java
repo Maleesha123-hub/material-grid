@@ -54,8 +54,10 @@ public class DailyRouteController {
             @RequestParam(required = false) Long routeId,
             @RequestParam(required = false) Long priceRateId,
             @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+
         PageResponse<DailyRouteResponse> page =
                 new PageResponse<>(dailyRouteService.search(date, vehicleId, routeId, priceRateId, pageable));
+
         return ResponseEntity.ok(ApiResponse.success("Daily routes retrieved successfully", page));
     }
 

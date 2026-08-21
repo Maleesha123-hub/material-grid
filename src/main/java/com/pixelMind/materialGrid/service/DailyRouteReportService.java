@@ -13,4 +13,6 @@ public interface DailyRouteReportService {
      * see class Javadoc on the impl), and computes the balance.
      */
     DailyRouteReportResponse generateReport(LocalDate date, Long vehicleId);
+
+    DailyRouteReportResponse getSummary(LocalDate date, Long vehicleId);
 }
