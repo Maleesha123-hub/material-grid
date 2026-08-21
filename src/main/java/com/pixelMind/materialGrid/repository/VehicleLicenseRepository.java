@@ -5,7 +5,9 @@ import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -36,4 +38,13 @@ public interface VehicleLicenseRepository extends JpaRepository<VehicleLicense, 
      * rule in the report service.
      */
     List<VehicleLicense> findByVehicleIdAndDate(Long vehicleId, LocalDate date);
+
+    @Query("""
+            select coalesce(sum(e.expenses), 0)
+            from VehicleLicense e
+            where e.vehicle.id = :vehicleId
+            and e.date = :date
+            and e.status = :status
+            """)
+    BigDecimal sumLicenseAmountByVehicleIdAndDate(Long vehicleId, LocalDate date, VehicleLicenseStatus status);
 }

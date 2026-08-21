@@ -2,6 +2,7 @@ package com.pixelMind.materialGrid.service.impl;
 
 import com.pixelMind.materialGrid.constant.ErrorCodeConstants;
 import com.pixelMind.materialGrid.dto.response.DailyRouteReportResponse;
+import com.pixelMind.materialGrid.dto.response.ReceiptSummaryDTO;
 import com.pixelMind.materialGrid.entity.DailyRoute;
 import com.pixelMind.materialGrid.entity.License;
 import com.pixelMind.materialGrid.entity.Vehicle;
@@ -9,16 +10,10 @@ import com.pixelMind.materialGrid.entity.VehicleLicense;
 import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
 import com.pixelMind.materialGrid.exception.BusinessException;
 import com.pixelMind.materialGrid.exception.ResourceNotFoundException;
-import com.pixelMind.materialGrid.repository.DailyRouteRepository;
-import com.pixelMind.materialGrid.repository.LicenseRepository;
-import com.pixelMind.materialGrid.repository.VehicleExpenseRepository;
-import com.pixelMind.materialGrid.repository.VehicleLicenseRepository;
-import com.pixelMind.materialGrid.repository.VehicleRepository;
+import com.pixelMind.materialGrid.repository.*;
 import com.pixelMind.materialGrid.service.DailyRouteReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +26,7 @@ import java.util.List;
  * checks License.startDate/endDate. The applicable License for a given
  * (vehicleId, date) is determined solely by the VehicleLicense row for that
  * exact pair, per its status - not by any date-range search.
- *
+ * <p>
  * Every method here is read-only: generating a report must never create,
  * update, or delete any row.
  */
@@ -50,7 +45,7 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
     @Transactional(readOnly = true)
     public DailyRouteReportResponse generateReport(LocalDate date, Long vehicleId) {
 
-        if (date == null &&  vehicleId == null) {
+        if (date == null && vehicleId == null) {
             return null;
         }
 
@@ -86,15 +81,39 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
     }
 
     @Override
-    public DailyRouteReportResponse getSummary(LocalDate date, Long vehicleId) {
+    public ReceiptSummaryDTO getSummary(LocalDate date, Long vehicleId) {
 
-        Page<DailyRoute> search = dailyRouteRepository.search(
-                date, vehicleId, null, null, Pageable.unpaged()
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Vehicle with ID " + vehicleId + " does not exist", ErrorCodeConstants.VEHICLE_NOT_FOUND)
+                );
+
+        // Daily routes
+        Integer loadCount = dailyRouteRepository.loadCountByVehicleIdAndDate(
+                vehicleId, date
         );
 
+        // Daily expenses
+        BigDecimal dailyExpenses = vehicleExpenseRepository.sumExpensesByVehicleIdAndDate(
+                vehicleId, date
+        );
 
+        // License amount
+        BigDecimal licenseAmount = vehicleLicenseRepository.sumLicenseAmountByVehicleIdAndDate(
+                vehicleId, date, VehicleLicenseStatus.ACTIVE
+        );
 
-        return null;
+        // Gross transport rate
+        BigDecimal dailyGrossAmount = dailyRouteRepository.sumAmountsByVehicleIdAndDate(vehicleId, date);
+
+        return ReceiptSummaryDTO.builder()
+                .totalDispatches(loadCount)
+                .totalVolumes(vehicle.getCapacity().multiply(new BigDecimal(loadCount)).doubleValue())
+                .dailyGrossTransportRate(dailyGrossAmount)
+                .dailyDeduction(dailyExpenses.add(licenseAmount))
+                .payable(dailyGrossAmount.subtract(dailyExpenses.add(licenseAmount)))
+                .build();
+
     }
 
     private DailyRoute resolveSingleDailyRoute(Vehicle vehicle, LocalDate date) {

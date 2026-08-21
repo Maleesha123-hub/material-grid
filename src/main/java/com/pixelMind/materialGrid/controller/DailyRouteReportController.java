@@ -1,7 +1,8 @@
 package com.pixelMind.materialGrid.controller;
 
-import com.pixelMind.materialGrid.dto.response.ApiResponse;
+import com.pixelMind.materialGrid.dto.response.CommonResponseDTO;
 import com.pixelMind.materialGrid.dto.response.DailyRouteReportResponse;
+import com.pixelMind.materialGrid.dto.response.ReceiptSummaryDTO;
 import com.pixelMind.materialGrid.service.DailyRoutePdfService;
 import com.pixelMind.materialGrid.service.DailyRouteReportService;
 import com.pixelMind.materialGrid.util.PdfFileNameUtil;
@@ -10,10 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -38,24 +36,17 @@ public class DailyRouteReportController {
     private final DailyRoutePdfService dailyRoutePdfService;
 
     @GetMapping(value = "/summary")
-    public ResponseEntity<ApiResponse<DailyRouteReportResponse>> getSummary(
+    public ResponseEntity<CommonResponseDTO> getSummary(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam Long vehicleId
     ) {
 
         log.info("DailyRouteReportController.getSummary() => accessed");
 
-        DailyRouteReportResponse summary = dailyRouteReportService.getSummary(date, vehicleId);
-
-        ApiResponse<DailyRouteReportResponse> response = new ApiResponse<>(
-                true,
-                "Summary fetched",
-                summary
+        return ResponseEntity.ok(
+                new CommonResponseDTO(
+                        dailyRouteReportService.getSummary(date, vehicleId), "", HttpStatus.OK)
         );
-
-        log.info("DailyRouteReportController.getSummary() => ended");
-
-        return ResponseEntity.ok(response);
 
     }
 

@@ -1,6 +1,7 @@
 package com.pixelMind.materialGrid.service;
 
 import com.pixelMind.materialGrid.dto.response.DailyRouteReportResponse;
+import com.pixelMind.materialGrid.dto.response.ReceiptSummaryDTO;
 
 import java.time.LocalDate;
 
@@ -14,5 +15,5 @@ public interface DailyRouteReportService {
      */
     DailyRouteReportResponse generateReport(LocalDate date, Long vehicleId);
 
-    DailyRouteReportResponse getSummary(LocalDate date, Long vehicleId);
+    ReceiptSummaryDTO getSummary(LocalDate date, Long vehicleId);
 }
