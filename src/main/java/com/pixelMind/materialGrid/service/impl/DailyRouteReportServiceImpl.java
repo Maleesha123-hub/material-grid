@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * MANDATORY rule (see spec sections 13/19/47): the Licence Fee lookup NEVER
@@ -45,6 +46,8 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
     @Transactional(readOnly = true)
     public DailyRouteReportResponse generateReport(LocalDate date, Long vehicleId) {
 
+        log.info("DailyRouteReportServiceImpl.generateReport() => accessed");
+
         if (date == null && vehicleId == null) {
             return null;
         }
@@ -53,30 +56,41 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Vehicle with ID " + vehicleId + " does not exist", ErrorCodeConstants.VEHICLE_NOT_FOUND));
 
-        DailyRoute dailyRoute = resolveSingleDailyRoute(vehicle, date);
+        BigDecimal totalAmount = Optional.ofNullable(
+                dailyRouteRepository.sumAmountsByVehicleIdAndDate(vehicleId, date)
+        ).orElse(BigDecimal.ZERO);
 
-        BigDecimal paidAmount = vehicleExpenseRepository.sumExpensesByVehicleIdAndDate(vehicleId, date);
-        if (paidAmount == null) {
-            paidAmount = BigDecimal.ZERO;
-        }
+        BigDecimal licenceFee = Optional.ofNullable(
+                vehicleLicenseRepository.sumLicenseAmountByVehicleIdAndDate(vehicleId, date, VehicleLicenseStatus.ACTIVE)
+        ).orElse(BigDecimal.ZERO);
 
-        BigDecimal licenceFee = resolveLicenceFee(vehicle, date);
+        BigDecimal paidAmount = Optional.ofNullable(
+                vehicleExpenseRepository.sumExpensesByVehicleIdAndDate(vehicleId, date)
+        ).orElse(BigDecimal.ZERO);
 
-        BigDecimal totalAmount = dailyRoute.getAmount();
         BigDecimal balance = totalAmount.subtract(paidAmount.add(licenceFee));
+
+        Integer loadCount = Optional.ofNullable(
+                dailyRouteRepository.loadCountByVehicleIdAndDate(vehicleId, date)
+        ).orElse(0);
+
 
         log.info("Daily route report generated: vehicleId={}, date={}, totalAmount={}, paidAmount={}, "
                         + "licenceFee={}, balance={}",
                 vehicleId, date, totalAmount, paidAmount, licenceFee, balance);
 
+        log.info("DailyRouteReportServiceImpl.generateReport() => ended");
+
         return DailyRouteReportResponse.builder()
                 .date(date)
                 .vehicleNumber(vehicle.getVehicleNumber())
                 .vehicleCapacity(vehicle.getCapacity())
+                .totalVolume(vehicle.getCapacity().multiply(BigDecimal.valueOf(loadCount)).doubleValue())
                 .totalAmount(totalAmount)
                 .paidAmount(paidAmount)
                 .licenceFee(licenceFee)
                 .balance(balance)
+                .loadCount(loadCount)
                 .build();
     }
 
@@ -116,7 +130,8 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
 
     }
 
-    private DailyRoute resolveSingleDailyRoute(Vehicle vehicle, LocalDate date) {
+    private List<DailyRoute> resolveDailyRoutes(Vehicle vehicle, LocalDate date) {
+
         List<DailyRoute> dailyRoutes = dailyRouteRepository.findByVehicleIdAndDateAndDeletedFalse(vehicle.getId(), date);
 
         if (dailyRoutes.isEmpty()) {
@@ -124,18 +139,8 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
                     "No daily route found for vehicle " + vehicle.getVehicleNumber() + " on " + date,
                     ErrorCodeConstants.DAILY_ROUTE_NOT_FOUND);
         }
-        if (dailyRoutes.size() > 1) {
-            // Business rule guarantees exactly one row for (vehicleId, date).
-            // More than one is a data integrity problem, not something to
-            // arbitrarily resolve by picking the first result.
-            log.error("Data integrity error: {} daily route records found for vehicleId={}, date={}",
-                    dailyRoutes.size(), vehicle.getId(), date);
-            throw new BusinessException(
-                    "Multiple daily route records exist for vehicle " + vehicle.getVehicleNumber()
-                            + " on " + date + ". This indicates a data integrity issue.",
-                    ErrorCodeConstants.DATA_INTEGRITY_ERROR);
-        }
-        return dailyRoutes.get(0);
+
+        return dailyRoutes;
     }
 
     private BigDecimal resolveLicenceFee(Vehicle vehicle, LocalDate date) {

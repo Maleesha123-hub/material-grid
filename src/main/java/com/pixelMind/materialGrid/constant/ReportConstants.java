@@ -13,5 +13,5 @@ public final class ReportConstants {
     public static final String REPORT_DATE_PATTERN = "yyyy.MM.dd"; // matches the provided sample exactly
     public static final String CURRENCY_PREFIX = "Rs. ";
 
-    public static final String PDF_FILENAME_PREFIX = "daily-route";
+    public static final String PDF_FILENAME_PREFIX = "receipt";
 }

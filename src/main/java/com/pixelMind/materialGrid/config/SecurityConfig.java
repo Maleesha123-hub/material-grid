@@ -98,6 +98,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/licenses/**").permitAll()
                         .requestMatchers("/api/v1/vehicle-licenses/**").permitAll()
                         .requestMatchers("/api/v1/vehicle-expenses/**").permitAll()
+                        .requestMatchers("/api/v1/daily-routes/report/summary/**").permitAll()
                         .requestMatchers("/api/v1/daily-routes/**").permitAll()
                         .anyRequest().permitAll()
                 )
