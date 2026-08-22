@@ -37,27 +37,27 @@ public class DailyRouteReportController {
     private final DailyRouteReportService dailyRouteReportService;
     private final DailyRoutePdfService dailyRoutePdfService;
 
-    @GetMapping(value = "/summary")
-    public ResponseEntity<ApiResponse<DailyRouteReportResponse>> getSummary(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam Long vehicleId
-    ) {
-
-        log.info("DailyRouteReportController.getSummary() => accessed");
-
-        DailyRouteReportResponse summary = dailyRouteReportService.getSummary(date, vehicleId);
-
-        ApiResponse<DailyRouteReportResponse> response = new ApiResponse<>(
-                true,
-                "Summary fetched",
-                summary
-        );
-
-        log.info("DailyRouteReportController.getSummary() => ended");
-
-        return ResponseEntity.ok(response);
-
-    }
+//    @GetMapping(value = "/summary")
+//    public ResponseEntity<ApiResponse<DailyRouteReportResponse>> getSummary(
+//            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+//            @RequestParam Long vehicleId
+//    ) {
+//
+//        log.info("DailyRouteReportController.getSummary() => accessed");
+//
+//        DailyRouteReportResponse summary = dailyRouteReportService.getSummary(date, vehicleId);
+//
+//        ApiResponse<DailyRouteReportResponse> response = new ApiResponse<>(
+//                true,
+//                "Summary fetched",
+//                summary
+//        );
+//
+//        log.info("DailyRouteReportController.getSummary() => ended");
+//
+//        return ResponseEntity.ok(response);
+//
+//    }
 
     @Operation(summary = "Preview the Daily Route report PDF inline (date + vehicleId)")
     @GetMapping("/preview")
