@@ -12,21 +12,22 @@ import java.util.List;
 
 public interface LicenseRepository extends JpaRepository<License, Long> {
 
-    boolean existsByLicenseCode(String licenseCode);
-
-    /**
-     * Fetches every License whose [startDate, endDate] range overlaps
-     * [minDate, maxDate] - one query per Excel import covering the whole
-     * file's date span, refined per-row in memory by the caller, instead of
-     * one query per distinct date.
-     *
-     * Condition: startDate <= maxDate AND endDate >= minDate.
-     */
-    List<License> findByStartDateLessThanEqualAndEndDateGreaterThanEqual(LocalDate maxDate, LocalDate minDate);
+    boolean existsByLicenseCodeAndDeletedFalse(String licenseCode);
 
     @Query("""
             SELECT l FROM License l
-            WHERE (:startDate IS NULL OR l.endDate >= :startDate)
+            WHERE l.deleted = false
+              AND l.startDate <= :maxDate
+              AND l.endDate >= :minDate
+            """)
+    List<License> findByDateRange(
+            @Param("maxDate") LocalDate maxDate,
+            @Param("minDate") LocalDate minDate);
+
+    @Query("""
+            SELECT l FROM License l
+            WHERE l.deleted = false
+              AND (:startDate IS NULL OR l.endDate >= :startDate)
               AND (:endDate IS NULL OR l.startDate <= :endDate)
             """)
     Page<License> findAllByDateRange(
@@ -35,8 +36,10 @@ public interface LicenseRepository extends JpaRepository<License, Long> {
             Pageable pageable);
 
     @Query("""
-            SELECT CASE WHEN COUNT(l) > 0 THEN TRUE ELSE FALSE END FROM License l
-            WHERE (:id IS NULL OR l.id <> :id)
+            SELECT CASE WHEN COUNT(l) > 0 THEN TRUE ELSE FALSE END
+            FROM License l
+            WHERE l.deleted = false
+              AND (:id IS NULL OR l.id <> :id)
               AND l.startDate <= :endDate
               AND l.endDate >= :startDate
             """)
@@ -45,4 +48,3 @@ public interface LicenseRepository extends JpaRepository<License, Long> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 }
-

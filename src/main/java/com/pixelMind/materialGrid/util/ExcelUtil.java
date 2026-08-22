@@ -183,6 +183,28 @@ public final class ExcelUtil {
         }
     }
 
+    public static Optional<Integer> readInteger(Row row, int colIndex) {
+        if (row == null) {
+            return Optional.empty();
+        }
+        Cell cell = row.getCell(colIndex);
+        if (cell == null || cell.getCellType() == CellType.BLANK) {
+            return Optional.empty();
+        }
+        try {
+            if (cell.getCellType() == CellType.NUMERIC) {
+                return Optional.of((int) cell.getNumericCellValue());
+            }
+            String raw = readString(row, colIndex);
+            if (raw.isBlank()) {
+                return Optional.empty();
+            }
+            return Optional.of(Integer.valueOf(raw));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
     private static String normalize(String s) {
         return s == null ? "" : s.trim().toLowerCase();
     }

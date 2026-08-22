@@ -4,6 +4,7 @@ CREATE TABLE file_history (
     file_type      VARCHAR(30)  NOT NULL,
     uploaded_by    VARCHAR(50)  NOT NULL,
     uploaded_date  DATETIME(6)  NOT NULL,
+    deleted        TINYINT(1)   NOT NULL DEFAULT 0,
     CONSTRAINT uk_file_history_name_type UNIQUE (file_name, file_type)
 );
 

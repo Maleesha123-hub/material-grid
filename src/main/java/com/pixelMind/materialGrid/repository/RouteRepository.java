@@ -10,11 +10,12 @@ import java.util.List;
 
 public interface RouteRepository extends JpaRepository<Route, Long> {
 
-    boolean existsByRouteCode(String routeCode);
+    boolean existsByRouteCodeAndDeletedFalse(String routeCode);
 
-    Page<Route> findByStartLocationContainingIgnoreCaseOrEndLocationContainingIgnoreCase(
-            String startLocation, String endLocation, Pageable pageable);
+    Page<Route> findByDeletedFalseAndStartLocationContainingIgnoreCaseOrDeletedFalseAndEndLocationContainingIgnoreCase(
+            String startLocation,
+            String endLocation,
+            Pageable pageable);
 
-    // Bulk lookup used by the Daily Route Excel import service.
-    List<Route> findByRouteCodeIn(Collection<String> routeCodes);
+    List<Route> findByRouteCodeInAndDeletedFalse(Collection<String> routeCodes);
 }

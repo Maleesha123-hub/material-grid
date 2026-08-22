@@ -56,7 +56,7 @@ public class DailyRouteServiceImpl implements DailyRouteService {
         PriceRate activePriceRate = findActivePriceRateOrThrow();
 
         String actor = SecurityUtil.getCurrentUsername();
-        BigDecimal amount = computeAmount(route, activePriceRate);
+        BigDecimal amount = computeAmount(vehicle, activePriceRate, route);
 
         DailyRoute dailyRoute = DailyRoute.builder()
                 .date(request.getDate())
@@ -65,7 +65,7 @@ public class DailyRouteServiceImpl implements DailyRouteService {
                 .priceRate(activePriceRate)
                 .amount(amount)
                 .checkBy(request.getCheckBy())
-                .deleted(false)
+                .billNumber(request.getBillNumber())
                 .createdBy(actor)
                 .modifiedBy(actor)
                 .build();
@@ -108,8 +108,9 @@ public class DailyRouteServiceImpl implements DailyRouteService {
         dailyRoute.setVehicle(vehicle);
         dailyRoute.setRoute(route);
         dailyRoute.setPriceRate(activePriceRate);
-        dailyRoute.setAmount(computeAmount(route, activePriceRate));
+        dailyRoute.setAmount(computeAmount(vehicle, activePriceRate, route));
         dailyRoute.setCheckBy(request.getCheckBy());
+        dailyRoute.setBillNumber(request.getBillNumber());
         dailyRoute.setModifiedBy(SecurityUtil.getCurrentUsername());
 
         DailyRoute saved = dailyRouteRepository.save(dailyRoute);
@@ -127,8 +128,11 @@ public class DailyRouteServiceImpl implements DailyRouteService {
         log.info("DailyRoute soft-deleted: id={}, by={}", id, dailyRoute.getModifiedBy());
     }
 
-    private BigDecimal computeAmount(Route route, PriceRate priceRate) {
-        return route.getKm().multiply(priceRate.getPrice()).setScale(4, RoundingMode.HALF_UP);
+    private BigDecimal computeAmount(Vehicle vehicle, PriceRate priceRate, Route route) {
+        return vehicle.getCapacity()
+                .multiply(priceRate.getPrice())
+                .multiply(route.getKm())
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private PriceRate findActivePriceRateOrThrow() {

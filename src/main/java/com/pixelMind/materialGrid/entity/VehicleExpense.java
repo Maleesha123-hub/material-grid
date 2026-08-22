@@ -44,10 +44,6 @@ public class VehicleExpense extends BaseAuditableEntity {
     @JoinColumn(name = "vehicle_id", nullable = false)
     private Vehicle vehicle;
 
-    /**
-     * ADDED: null for manually-created expenses, always populated for
-     * expenses created via Excel upload (VehicleExpenseImportServiceImpl).
-     */
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "file_history_id", nullable = true)
     private FileHistory fileHistory;

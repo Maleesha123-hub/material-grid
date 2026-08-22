@@ -11,13 +11,14 @@ import java.util.Optional;
 
 public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
 
-    boolean existsByVehicleNumber(String vehicleNumber);
+    boolean existsByVehicleNumberAndDeletedFalse(String vehicleNumber);
 
-    Optional<Vehicle> findByVehicleNumber(String vehicleNumber);
+    Optional<Vehicle> findByVehicleNumberAndDeletedFalse(String vehicleNumber);
 
-    Page<Vehicle> findByVehicleNumberContainingIgnoreCase(String vehicleNumber, Pageable pageable);
+    Page<Vehicle> findByVehicleNumberContainingIgnoreCaseAndDeletedFalse(
+            String vehicleNumber,
+            Pageable pageable);
 
-    // Bulk lookup used by Excel import services - one query for every
-    // distinct vehicle number in an uploaded file, instead of one per row.
-    List<Vehicle> findByVehicleNumberIn(Collection<String> vehicleNumbers);
+    List<Vehicle> findByVehicleNumberInAndDeletedFalse(
+            Collection<String> vehicleNumbers);
 }

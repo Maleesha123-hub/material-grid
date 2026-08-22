@@ -188,7 +188,7 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
     /** Unchanged from the previous iteration. */
     private BigDecimal resolveLicenceFeeForRange(Vehicle vehicle, LocalDate startDate, LocalDate endDate) {
         List<VehicleLicense> vehicleLicenses =
-                vehicleLicenseRepository.findByVehicleIdAndDateBetween(vehicle.getId(), startDate, endDate);
+                vehicleLicenseRepository.findByVehicleIdAndDateBetweenAndDeletedFalse(vehicle.getId(), startDate, endDate);
 
         Set<Long> distinctActiveLicenseIds = new LinkedHashSet<>();
         for (VehicleLicense vl : vehicleLicenses) {

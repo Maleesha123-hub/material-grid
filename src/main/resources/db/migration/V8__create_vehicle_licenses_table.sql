@@ -9,6 +9,7 @@ CREATE TABLE vehicle_licenses (
     modified_by      VARCHAR(50),
     modified_date    DATETIME(6)  NOT NULL,
     version          BIGINT       NOT NULL DEFAULT 0,
+    deleted         TINYINT(1)    NOT NULL DEFAULT 0,
 
     -- No UNIQUE(vehicle_id, license_id): a vehicle legitimately holds the
     -- same license type again after renewal/reissue, each with its own

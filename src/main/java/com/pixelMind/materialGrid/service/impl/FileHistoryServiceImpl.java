@@ -52,7 +52,7 @@ public class FileHistoryServiceImpl implements FileHistoryService {
     @Override
     @Transactional(readOnly = true)
     public void validateNotAlreadyUploaded(String fileName, FileType fileType) {
-        if (fileHistoryRepository.existsByFileNameAndFileType(fileName, fileType)) {
+        if (fileHistoryRepository.existsByFileNameAndFileTypeAndDeletedFalse(fileName, fileType)) {
             throw duplicateException(fileName, fileType);
         }
     }

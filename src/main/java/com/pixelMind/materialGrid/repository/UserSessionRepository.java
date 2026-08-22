@@ -16,12 +16,6 @@ public interface UserSessionRepository extends JpaRepository<UserSession, Long> 
 
     Optional<UserSession> findByUserIdAndStatus(Long userId, SessionStatus status);
 
-    /**
-     * Pessimistic write lock on the current active session row (if any) for a
-     * user. Used to serialize concurrent login attempts for the same user so
-     * that "invalidate old + create new" is atomic and a second, simultaneous
-     * login request cannot slip in between the check and the write.
-     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from UserSession s where s.userId = :userId and s.status = 'ACTIVE'")
     Optional<UserSession> findActiveByUserIdForUpdate(@Param("userId") Long userId);

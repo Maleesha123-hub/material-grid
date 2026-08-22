@@ -63,4 +63,8 @@ public class FileHistory {
 
     @Column(name = "uploaded_date", nullable = false)
     private LocalDateTime uploadedDate;
+
+    @Column(name = "deleted", nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
 }

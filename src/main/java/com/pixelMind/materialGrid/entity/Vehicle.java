@@ -9,11 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
@@ -38,14 +34,11 @@ public class Vehicle extends BaseAuditableEntity {
     @Column(name = "capacity", nullable = false, precision = 10, scale = 2)
     private BigDecimal capacity;
 
-    /**
-     * ADDED: nullable - null for Vehicles created through the still-active
-     * manual CRUD endpoint (POST /api/v1/vehicles), always populated for
-     * Vehicles created through the new Excel bulk-upload path (see
-     * VehicleImportServiceImpl). See this feature's architectural notes for
-     * why manual creation was kept rather than removed.
-     */
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "file_history_id", nullable = true)
     private FileHistory fileHistory;
+
+    @Column(name = "deleted", nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
 }

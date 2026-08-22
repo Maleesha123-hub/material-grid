@@ -9,6 +9,7 @@ CREATE TABLE licenses (
     modified_by     VARCHAR(50),
     modified_date   DATETIME(6)   NOT NULL,
     version         BIGINT        NOT NULL DEFAULT 0,
+    deleted         TINYINT(1)    NOT NULL DEFAULT 0,
 
     CONSTRAINT uk_licenses_license_code UNIQUE (license_code),
     CONSTRAINT chk_licenses_price_positive CHECK (price > 0),

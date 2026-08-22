@@ -7,6 +7,7 @@ CREATE TABLE vehicles (
     modified_by     VARCHAR(50),
     modified_date   DATETIME(6)   NOT NULL,
     version         BIGINT        NOT NULL DEFAULT 0,
+    deleted         TINYINT(1)    NOT NULL DEFAULT 0,
 
     CONSTRAINT uk_vehicles_vehicle_number UNIQUE (vehicle_number),
     CONSTRAINT chk_vehicles_capacity_positive CHECK (capacity > 0)

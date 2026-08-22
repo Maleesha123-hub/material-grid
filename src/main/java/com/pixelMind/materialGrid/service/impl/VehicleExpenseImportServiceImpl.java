@@ -114,7 +114,7 @@ public class VehicleExpenseImportServiceImpl implements VehicleExpenseImportServ
                     .map(RawRow::vehicleNumber)
                     .filter(v -> !v.isBlank())
                     .collect(Collectors.toSet());
-            Map<String, Vehicle> vehicleByNumber = vehicleRepository.findByVehicleNumberIn(distinctVehicleNumbers).stream()
+            Map<String, Vehicle> vehicleByNumber = vehicleRepository.findByVehicleNumberInAndDeletedFalse(distinctVehicleNumbers).stream()
                     .collect(Collectors.toMap(Vehicle::getVehicleNumber, v -> v));
 
             List<ResolvedRow> resolved = new ArrayList<>();

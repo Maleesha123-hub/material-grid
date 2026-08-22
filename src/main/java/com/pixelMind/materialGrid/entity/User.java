@@ -3,6 +3,7 @@ package com.pixelMind.materialGrid.entity;
 import com.pixelMind.materialGrid.entity.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -12,8 +13,9 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class User {
+@SuperBuilder
+@EqualsAndHashCode(callSuper = false)
+public class User extends BaseAuditableEntity{
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,34 +31,7 @@ public class User {
     @Column(name = "status", nullable = false, length = 20)
     private UserStatus status;
 
-    @Column(name = "created_by", length = 50)
-    private String createdBy;
-
-    @Column(name = "created_date", nullable = false, updatable = false)
-    private LocalDateTime createdDate;
-
-    @Column(name = "modified_by", length = 50)
-    private String modifiedBy;
-
-    @Column(name = "modified_date", nullable = false)
-    private LocalDateTime modifiedDate;
-
-    @Version
-    @Column(name = "version", nullable = false)
-    private Long version;
-
-    @PrePersist
-    protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        this.createdDate = now;
-        this.modifiedDate = now;
-        if (this.status == null) {
-            this.status = UserStatus.ACTIVE;
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.modifiedDate = LocalDateTime.now();
-    }
+    @Column(name = "deleted", nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
 }

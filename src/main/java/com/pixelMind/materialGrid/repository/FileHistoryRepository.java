@@ -12,17 +12,15 @@ import java.time.LocalDateTime;
 
 public interface FileHistoryRepository extends JpaRepository<FileHistory, Long> {
 
-    boolean existsByFileNameAndFileType(String fileName, FileType fileType);
+    boolean existsByFileNameAndFileTypeAndDeletedFalse(
+            String fileName,
+            FileType fileType
+    );
 
-    /**
-     * Same optional-parameter pattern already used by
-     * DailyRouteRepository#search - each filter only applies when its
-     * argument is non-null, letting the controller pass through whatever
-     * subset of query params the caller actually supplied.
-     */
     @Query("""
             select f from FileHistory f
-            where (:fileName is null or lower(f.fileName) like lower(concat('%', :fileName, '%')))
+            where f.deleted = false
+              and (:fileName is null or lower(f.fileName) like lower(concat('%', :fileName, '%')))
               and (:fileType is null or f.fileType = :fileType)
               and (:uploadedBy is null or lower(f.uploadedBy) like lower(concat('%', :uploadedBy, '%')))
               and (:fromDate is null or f.uploadedDate >= :fromDate)

@@ -74,7 +74,7 @@ public class RouteServiceImpl implements RouteService {
 
         if (StringUtils.hasText(search)) {
             return routeRepository
-                    .findByStartLocationContainingIgnoreCaseOrEndLocationContainingIgnoreCase(search, search, pageable)
+                    .findByDeletedFalseAndStartLocationContainingIgnoreCaseOrDeletedFalseAndEndLocationContainingIgnoreCase(search, search, pageable)
                     .map(routeMapper::toResponse);
         }
         return routeRepository.findAll(pageable).map(routeMapper::toResponse);
@@ -100,7 +100,7 @@ public class RouteServiceImpl implements RouteService {
     @Transactional
     public void deleteRoute(Long id) {
         Route route = findOrThrow(id);
-        if (dailyRouteRepository.existsByRouteId(id)) {
+        if (dailyRouteRepository.existsByRouteIdAndDeletedFalse(id)) {
             throw new BusinessException(
                     "Cannot delete route with existing daily route records. "
                             + "Daily routes are historical records and this route must be preserved for referential integrity.",

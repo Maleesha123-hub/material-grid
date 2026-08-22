@@ -168,7 +168,7 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
 
         addCell(table, "TOTAL", Element.ALIGN_CENTER, TOTAL_ROW_FONT);
         addCell(table, "-", Element.ALIGN_LEFT, TOTAL_ROW_FONT);
-        addCell(table, "", Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
+        addCell(table, "-", Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
         addCell(table, String.valueOf(receipt.getTotalLoadCount()), Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
         addCell(table, "-", Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
         addCell(table, MoneyFormatUtil.format(receipt.getTotalAmount()), Element.ALIGN_RIGHT, TOTAL_ROW_FONT);

@@ -93,7 +93,7 @@ public class LicenseServiceImpl implements LicenseService {
     @Transactional
     public void deleteLicense(Long id) {
         License license = findOrThrow(id);
-        if (vehicleLicenseRepository.existsByLicenseId(id)) {
+        if (vehicleLicenseRepository.existsByLicenseIdAndDeletedFalse(id)) {
             throw new BusinessException(
                     "Cannot delete license with existing vehicle assignment records. "
                             + "Vehicle-license assignments are historical records and this license must be preserved.",

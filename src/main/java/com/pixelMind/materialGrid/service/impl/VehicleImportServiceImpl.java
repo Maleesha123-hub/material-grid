@@ -122,7 +122,7 @@ public class VehicleImportServiceImpl implements VehicleImportService {
             // query for every distinct number in the file.
             Set<String> distinctVehicleNumbers = rawRows.stream()
                     .map(RawRow::vehicleNumber).filter(v -> !v.isBlank()).collect(Collectors.toSet());
-            Set<String> existingVehicleNumbers = vehicleRepository.findByVehicleNumberIn(distinctVehicleNumbers)
+            Set<String> existingVehicleNumbers = vehicleRepository.findByVehicleNumberInAndDeletedFalse(distinctVehicleNumbers)
                     .stream().map(Vehicle::getVehicleNumber).collect(Collectors.toSet());
 
             List<ResolvedRow> resolved = new ArrayList<>();

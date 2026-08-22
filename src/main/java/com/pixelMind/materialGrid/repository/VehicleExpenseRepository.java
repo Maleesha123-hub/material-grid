@@ -15,36 +15,42 @@ public interface VehicleExpenseRepository extends JpaRepository<VehicleExpense, 
 
     Page<VehicleExpense> findByDeletedFalse(Pageable pageable);
 
-    Page<VehicleExpense> findByVehicleIdAndDeletedFalse(Long vehicleId, Pageable pageable);
+    Page<VehicleExpense> findByVehicleIdAndDeletedFalse(
+            Long vehicleId,
+            Pageable pageable);
 
-    Page<VehicleExpense> findByDateBetweenAndDeletedFalse(LocalDate from, LocalDate to, Pageable pageable);
+    Page<VehicleExpense> findByDateBetweenAndDeletedFalse(
+            LocalDate from,
+            LocalDate to,
+            Pageable pageable);
 
-    boolean existsByVehicleId(Long vehicleId);
+    boolean existsByVehicleIdAndDeletedFalse(Long vehicleId);
 
     @Query("""
-            select coalesce(sum(e.expenses), 0) from VehicleExpense e
-            where e.vehicle.id = :vehicleId and e.date = :date and e.deleted = false
+            select coalesce(sum(e.expenses), 0)
+            from VehicleExpense e
+            where e.deleted = false
+              and e.vehicle.id = :vehicleId
+              and e.date = :date
             """)
-    BigDecimal sumExpensesByVehicleIdAndDate(@Param("vehicleId") Long vehicleId, @Param("date") LocalDate date);
+    BigDecimal sumExpensesByVehicleIdAndDate(
+            @Param("vehicleId") Long vehicleId,
+            @Param("date") LocalDate date);
 
     @Query("""
-            select coalesce(sum(e.expenses), 0) from VehicleExpense e
-            where e.vehicle.id = :vehicleId
+            select coalesce(sum(e.expenses), 0)
+            from VehicleExpense e
+            where e.deleted = false
+              and e.vehicle.id = :vehicleId
               and e.date between :startDate and :endDate
-              and e.deleted = false
             """)
     BigDecimal sumExpensesByVehicleIdAndDateBetween(
             @Param("vehicleId") Long vehicleId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 
-    /**
-     * NEW: backs the payment receipt's per-date Paid Amount consolidation
-     * (spec sections 11-13). Fetches every raw expense in the range in ONE
-     * query; DailyRouteReportServiceImpl groups these by date and sums both
-     * the per-date and range-wide totals in memory - no query per date, no
-     * query per row (see spec section 30).
-     */
     List<VehicleExpense> findByVehicleIdAndDateBetweenAndDeletedFalse(
-            Long vehicleId, LocalDate startDate, LocalDate endDate);
+            Long vehicleId,
+            LocalDate startDate,
+            LocalDate endDate);
 }

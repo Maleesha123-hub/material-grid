@@ -30,9 +30,6 @@ public class Route extends BaseAuditableEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Assigned server-side by CodeGeneratorService before the first save -
-    // never accepted from client input. See CodeGeneratorService for the
-    // concurrency-safe generation strategy.
     @Column(name = "route_code", nullable = false, unique = true, length = 20)
     private String routeCode;
 
@@ -44,4 +41,8 @@ public class Route extends BaseAuditableEntity {
 
     @Column(name = "km", nullable = false, precision = 10, scale = 2)
     private BigDecimal km;
+
+    @Column(name = "deleted", nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
 }

@@ -36,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
@@ -62,10 +63,10 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
     private final PriceRateRepository priceRateRepository;
     private final FileHistoryService fileHistoryService;
 
-    private record RawRow(int rowNumber, LocalDate date, String vehicleNumber, String routeCode, String checkBy) {
+    private record RawRow(int rowNumber, LocalDate date, String vehicleNumber, String bilNumber, String routeCode, String checkBy) {
     }
 
-    private record ResolvedRow(LocalDate date, Vehicle vehicle, Route route, License license, String checkBy) {
+    private record ResolvedRow(LocalDate date, Vehicle vehicle, String bilNumber, Route route, License license, String checkBy) {
     }
 
     @Override
@@ -82,6 +83,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
 
             int dateCol = ExcelUtil.columnOf(headerIndex, "Date");
             int vehicleCol = ExcelUtil.columnOf(headerIndex, "Vehicle Number");
+            int bilNumberCol = ExcelUtil.columnOf(headerIndex, "Bil Number");
             int routeCol = ExcelUtil.columnOf(headerIndex, "Route Code");
             int checkByCol = ExcelUtil.columnOf(headerIndex, "Check By");
 
@@ -106,6 +108,12 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                     errors.add(error(rowNumber, "Vehicle Number", null, "Vehicle number is required"));
                 }
 
+                String bilNumber = ExcelUtil.readString(row, bilNumberCol);
+                if (bilNumber.isBlank()) {
+                    errors.add(error(rowNumber, "Bil Number", ExcelUtil.readString(row, bilNumberCol),
+                            "Bil Number is required"));
+                }
+
                 String routeCode = ExcelUtil.readString(row, routeCol).toUpperCase();
                 if (routeCode.isBlank()) {
                     errors.add(error(rowNumber, "Route Code", null, "Route code is required"));
@@ -116,7 +124,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                     errors.add(error(rowNumber, "Check By", null, "Check By is required"));
                 }
 
-                rawRows.add(new RawRow(rowNumber, date.orElse(null), vehicleNumber, routeCode, checkBy));
+                rawRows.add(new RawRow(rowNumber, date.orElse(null), vehicleNumber, bilNumber, routeCode, checkBy));
             }
 
             if (rawRows.isEmpty()) {
@@ -126,12 +134,12 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
 
             Set<String> distinctVehicleNumbers = rawRows.stream()
                     .map(RawRow::vehicleNumber).filter(v -> !v.isBlank()).collect(Collectors.toSet());
-            Map<String, Vehicle> vehicleByNumber = vehicleRepository.findByVehicleNumberIn(distinctVehicleNumbers).stream()
+            Map<String, Vehicle> vehicleByNumber = vehicleRepository.findByVehicleNumberInAndDeletedFalse(distinctVehicleNumbers).stream()
                     .collect(Collectors.toMap(Vehicle::getVehicleNumber, v -> v));
 
             Set<String> distinctRouteCodes = rawRows.stream()
                     .map(RawRow::routeCode).filter(v -> !v.isBlank()).collect(Collectors.toSet());
-            Map<String, Route> routeByCode = routeRepository.findByRouteCodeIn(distinctRouteCodes).stream()
+            Map<String, Route> routeByCode = routeRepository.findByRouteCodeInAndDeletedFalse(distinctRouteCodes).stream()
                     .collect(Collectors.toMap(Route::getRouteCode, r -> r));
 
             List<LocalDate> validDates = rawRows.stream().map(RawRow::date).filter(Objects::nonNull).toList();
@@ -139,7 +147,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
             if (!validDates.isEmpty()) {
                 LocalDate minDate = validDates.stream().min(Comparator.naturalOrder()).get();
                 LocalDate maxDate = validDates.stream().max(Comparator.naturalOrder()).get();
-                candidateLicenses = licenseRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(maxDate, minDate);
+                candidateLicenses = licenseRepository.findByDateRange(maxDate, minDate);
             }
             final List<License> licensesForRange = candidateLicenses;
 
@@ -181,8 +189,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                     continue;
                 }
 
-                resolved.add(new ResolvedRow(raw.date, vehicle, route, license, raw.checkBy()));
-
+                resolved.add(new ResolvedRow(raw.date, vehicle, raw.bilNumber(), route, license, raw.checkBy()));
             }
 
             if (!errors.isEmpty()) {
@@ -197,7 +204,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
             String actor = SecurityUtil.getCurrentUsername();
 
             resolved.stream()
-                    .filter(row -> !vehicleLicenseRepository.existsByVehicleIdAndLicenseId(row.vehicle.getId(), row.license.getId()))
+                    .filter(row -> !vehicleLicenseRepository.existsByVehicleIdAndLicenseIdAndDeletedFalse(row.vehicle.getId(), row.license.getId()))
                             .forEach(row -> {
                                 VehicleLicense vehicleLicense = VehicleLicense.builder()
                                         .vehicle(row.vehicle)
@@ -217,9 +224,9 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                             .vehicle(row.vehicle())
                             .route(row.route())
                             .priceRate(activePriceRate)
-                            .amount(row.route().getKm().multiply(activePriceRate.getPrice())
-                                    .setScale(4, RoundingMode.HALF_UP))
+                            .amount(computeAmount(row.vehicle(), activePriceRate, row.route()))
                             .checkBy(row.checkBy())
+                            .billNumber(row.bilNumber())
                             .fileHistory(fileHistory)
                             .deleted(false)
                             .createdBy(actor)
@@ -256,5 +263,12 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
 
     private ExcelValidationError error(int rowNumber, String field, String value, String message) {
         return ExcelValidationError.builder().rowNumber(rowNumber).field(field).value(value).message(message).build();
+    }
+
+    private BigDecimal computeAmount(Vehicle vehicle, PriceRate priceRate, Route route) {
+        return vehicle.getCapacity()
+                .multiply(priceRate.getPrice())
+                .multiply(route.getKm())
+                .setScale(2, RoundingMode.HALF_UP);
     }
 }

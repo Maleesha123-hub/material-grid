@@ -55,7 +55,7 @@ public class PriceRateServiceImpl implements PriceRateService {
         PriceRate priceRate = PriceRate.builder()
                 .price(request.getPrice())
                 .status(PriceRateStatus.INACTIVE) // set below via activation path if requested ACTIVE
-                .addedBy(actor)
+                .createdBy(actor)
                 .modifiedBy(actor)
                 .build();
 
@@ -129,7 +129,7 @@ public class PriceRateServiceImpl implements PriceRateService {
         // deactivated (see DailyRoute entity Javadoc) - which only works if
         // the referenced PriceRate is never actually deleted out from under
         // them.
-        if (dailyRouteRepository.existsByPriceRateId(id)) {
+        if (dailyRouteRepository.existsByPriceRateIdAndDeletedFalse(id)) {
             throw new BusinessException(
                     "Cannot delete a price rate that is referenced by existing daily route records.",
                     ErrorCodeConstants.BUSINESS_RULE_VIOLATION);

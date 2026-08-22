@@ -19,6 +19,7 @@ public class DailyRouteResponse {
     private PriceRateSummaryResponse priceRate;
     private BigDecimal amount;
     private String checkBy;
+    private String bilNumber;
     private String createdBy;
     private LocalDateTime createdDate;
     private String modifiedBy;

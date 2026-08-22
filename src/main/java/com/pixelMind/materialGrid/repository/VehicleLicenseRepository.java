@@ -12,30 +12,41 @@ import java.util.List;
 
 public interface VehicleLicenseRepository extends JpaRepository<VehicleLicense, Long> {
 
-    Page<VehicleLicense> findByVehicleId(Long vehicleId, Pageable pageable);
+    Page<VehicleLicense> findByVehicleIdAndDeletedFalse(
+            Long vehicleId,
+            Pageable pageable);
 
-    Page<VehicleLicense> findByLicenseId(Long licenseId, Pageable pageable);
+    Page<VehicleLicense> findByLicenseIdAndDeletedFalse(
+            Long licenseId,
+            Pageable pageable);
 
-    Page<VehicleLicense> findByStatus(VehicleLicenseStatus status, Pageable pageable);
+    Page<VehicleLicense> findByStatusAndDeletedFalse(
+            VehicleLicenseStatus status,
+            Pageable pageable);
 
-    Page<VehicleLicense> findByVehicleIdAndStatus(Long vehicleId, VehicleLicenseStatus status, Pageable pageable);
+    Page<VehicleLicense> findByVehicleIdAndStatusAndDeletedFalse(
+            Long vehicleId,
+            VehicleLicenseStatus status,
+            Pageable pageable);
 
-    boolean existsByVehicleId(Long vehicleId);
+    boolean existsByVehicleIdAndDeletedFalse(Long vehicleId);
 
-    boolean existsByLicenseId(Long licenseId);
+    boolean existsByLicenseIdAndDeletedFalse(Long licenseId);
 
-    boolean existsByVehicleIdAndLicenseId(Long vehicleId, Long licenseId);
+    boolean existsByVehicleIdAndLicenseIdAndDeletedFalse(
+            Long vehicleId,
+            Long licenseId);
 
-    List<VehicleLicense> findByVehicleIdInAndLicenseIdIn(Collection<Long> vehicleIds, Collection<Long> licenseIds);
+    List<VehicleLicense> findByVehicleIdInAndLicenseIdInAndDeletedFalse(
+            Collection<Long> vehicleIds,
+            Collection<Long> licenseIds);
 
-    List<VehicleLicense> findByVehicleIdAndDate(Long vehicleId, LocalDate date);
+    List<VehicleLicense> findByVehicleIdAndDateAndDeletedFalse(
+            Long vehicleId,
+            LocalDate date);
 
-    /**
-     * NEW: backs the date-range Daily Route report's Licence Fee. See
-     * DailyRouteReportServiceImpl#resolveLicenceFeeForRange for the
-     * distinct-license, no-double-counting rule this feeds, and its one
-     * known limitation. Deliberately does NOT filter by License date
-     * range - same mandatory rule as the single-date version.
-     */
-    List<VehicleLicense> findByVehicleIdAndDateBetween(Long vehicleId, LocalDate startDate, LocalDate endDate);
+    List<VehicleLicense> findByVehicleIdAndDateBetweenAndDeletedFalse(
+            Long vehicleId,
+            LocalDate startDate,
+            LocalDate endDate);
 }

@@ -55,10 +55,9 @@ public class DailyRoute extends BaseAuditableEntity {
     @Column(name = "check_by", nullable = false, length = 100)
     private String checkBy;
 
-    /**
-     * ADDED: null for manually-created daily routes, always populated for
-     * daily routes created via Excel upload (DailyRouteImportServiceImpl).
-     */
+    @Column(name = "bill_number", nullable = false, length = 100)
+    private String billNumber;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "file_history_id", nullable = true)
     private FileHistory fileHistory;

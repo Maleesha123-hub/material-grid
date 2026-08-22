@@ -9,6 +9,7 @@ CREATE TABLE routes (
     modified_by     VARCHAR(50),
     modified_date   DATETIME(6)   NOT NULL,
     version         BIGINT        NOT NULL DEFAULT 0,
+    deleted         TINYINT(1)    NOT NULL DEFAULT 0,
 
     CONSTRAINT uk_routes_route_code UNIQUE (route_code),
     CONSTRAINT chk_routes_km_positive CHECK (km > 0)

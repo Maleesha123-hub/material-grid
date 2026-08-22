@@ -28,11 +28,11 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
             @Param("priceRateId") Long priceRateId,
             Pageable pageable);
 
-    boolean existsByVehicleId(Long vehicleId);
+    boolean existsByVehicleIdAndDeletedFalse(Long vehicleId);
 
-    boolean existsByRouteId(Long routeId);
+    boolean existsByRouteIdAndDeletedFalse(Long routeId);
 
-    boolean existsByPriceRateId(Long priceRateId);
+    boolean existsByPriceRateIdAndDeletedFalse(Long priceRateId);
 
     @Query("""
             select d from DailyRoute d
@@ -46,16 +46,10 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
             @Param("vehicleIds") Collection<Long> vehicleIds,
             @Param("routeIds") Collection<Long> routeIds);
 
-    List<DailyRoute> findByVehicleIdAndDateAndDeletedFalse(Long vehicleId, LocalDate date);
+    List<DailyRoute> findByVehicleIdAndDateAndDeletedFalse(
+            Long vehicleId,
+            LocalDate date);
 
-    /**
-     * MODIFIED: now also `join fetch d.route` alongside the existing
-     * `d.priceRate` fetch. The payment receipt now reads BOTH
-     * priceRate.getPrice() and route.getRouteCode()/route.getKm() for every
-     * record while consolidating by date - fetching both here in one query
-     * is what keeps that N+1-free (JPA allows multiple join fetches in a
-     * single JPQL query; this still produces exactly one SQL statement).
-     */
     @Query("""
             select d from DailyRoute d
             join fetch d.priceRate

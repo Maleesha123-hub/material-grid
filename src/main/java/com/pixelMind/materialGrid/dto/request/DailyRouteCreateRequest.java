@@ -27,7 +27,7 @@ public class DailyRouteCreateRequest {
     @Size(max = 100)
     private String checkBy;
 
-    // priceRateId is intentionally absent - the backend always resolves and
-    // uses the currently ACTIVE PriceRate; the client cannot select or
-    // override it. See DailyRouteServiceImpl.createDailyRoute.
+    @NotBlank(message = "Bil Number is required")
+    @Size(max = 100)
+    private String billNumber;
 }
