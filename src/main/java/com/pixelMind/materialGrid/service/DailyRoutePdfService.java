@@ -1,12 +1,12 @@
 package com.pixelMind.materialGrid.service;
 
-import com.pixelMind.materialGrid.dto.response.DailyRouteReportResponse;
+import com.pixelMind.materialGrid.dto.response.DailyRoutePaymentReceipt;
 
 public interface DailyRoutePdfService {
 
     /**
-     * Pure rendering - accepts an already-built report DTO and returns PDF
-     * bytes. Performs no database access.
+     * Pure rendering - accepts an already-built payment receipt DTO and
+     * returns PDF bytes. Performs no database access.
      */
-    byte[] generatePdf(DailyRouteReportResponse report);
+    byte[] generatePdf(DailyRoutePaymentReceipt receipt);
 }

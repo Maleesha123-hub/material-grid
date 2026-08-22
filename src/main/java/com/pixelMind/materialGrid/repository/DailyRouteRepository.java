@@ -1,14 +1,12 @@
 package com.pixelMind.materialGrid.repository;
 
 import com.pixelMind.materialGrid.entity.DailyRoute;
-import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -48,36 +46,27 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
             @Param("vehicleIds") Collection<Long> vehicleIds,
             @Param("routeIds") Collection<Long> routeIds);
 
-    /**
-     * Used by the Daily Route PDF report. Returns a List (not Optional)
-     * deliberately, so the service layer can distinguish "no record" from
-     * "unexpectedly more than one record" and report each as a distinct,
-     * clear error rather than letting Spring Data throw a generic
-     * IncorrectResultSizeDataAccessException.
-     */
     List<DailyRoute> findByVehicleIdAndDateAndDeletedFalse(Long vehicleId, LocalDate date);
 
+    /**
+     * MODIFIED: now also `join fetch d.route` alongside the existing
+     * `d.priceRate` fetch. The payment receipt now reads BOTH
+     * priceRate.getPrice() and route.getRouteCode()/route.getKm() for every
+     * record while consolidating by date - fetching both here in one query
+     * is what keeps that N+1-free (JPA allows multiple join fetches in a
+     * single JPQL query; this still produces exactly one SQL statement).
+     */
     @Query("""
-            select coalesce(sum(e.amount), 0)
-            from DailyRoute e
-            where e.vehicle.id = :vehicleId
-            and e.date = :date
-            and e.deleted = false
+            select d from DailyRoute d
+            join fetch d.priceRate
+            join fetch d.route
+            where d.deleted = false
+              and d.vehicle.id = :vehicleId
+              and d.date between :startDate and :endDate
+            order by d.date asc
             """)
-    BigDecimal sumAmountsByVehicleIdAndDate(Long vehicleId, LocalDate date);
-
-    @Query("""
-            select COUNT(e.id)
-            from DailyRoute e
-            where e.vehicle.id = :vehicleId
-            and e.date = :date
-            and e.deleted = false
-            """)
-    Integer loadCountByVehicleIdAndDate(Long vehicleId, LocalDate date);
-
-    List<DailyRoute> findByVehicleIdAndDateBetweenAndDeletedFalse(
-            Long vehicleId,
-            LocalDate startDate,
-            LocalDate endDate
-    );
+    List<DailyRoute> findByVehicleIdAndDateBetween(
+            @Param("vehicleId") Long vehicleId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 }

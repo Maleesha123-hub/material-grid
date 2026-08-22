@@ -14,6 +14,7 @@ public final class ErrorCodeConstants {
     public static final String BUSINESS_RULE_VIOLATION = "BUSINESS_RULE_VIOLATION";
     public static final String UNAUTHORIZED = "UNAUTHORIZED";
     public static final String INTERNAL_ERROR = "INTERNAL_ERROR";
+
     public static final String ROUTE_NOT_FOUND = "ROUTE_NOT_FOUND";
     public static final String DUPLICATE_ROUTE_CODE = "DUPLICATE_ROUTE_CODE";
     public static final String VEHICLE_NOT_FOUND = "VEHICLE_NOT_FOUND";
@@ -23,8 +24,16 @@ public final class ErrorCodeConstants {
     public static final String VEHICLE_LICENSE_NOT_FOUND = "VEHICLE_LICENSE_NOT_FOUND";
     public static final String VEHICLE_EXPENSE_NOT_FOUND = "VEHICLE_EXPENSE_NOT_FOUND";
     public static final String DAILY_ROUTE_NOT_FOUND = "DAILY_ROUTE_NOT_FOUND";
+
     public static final String ACTIVE_PRICE_RATE_NOT_FOUND = "ACTIVE_PRICE_RATE_NOT_FOUND";
     public static final String DATA_INTEGRITY_ERROR = "DATA_INTEGRITY_ERROR";
+
     public static final String DUPLICATE_FILE_UPLOAD = "DUPLICATE_FILE_UPLOAD";
     public static final String FILE_HISTORY_NOT_FOUND = "FILE_HISTORY_NOT_FOUND";
+
+    // New for the Vehicle Payment Receipt: a single date within the report
+    // range has DailyRoute records referencing genuinely different price
+    // rate VALUES - see DailyRouteReportServiceImpl for why this can't be
+    // silently resolved by picking one.
+    public static final String AMBIGUOUS_PRICE_RATE = "AMBIGUOUS_PRICE_RATE";
 }

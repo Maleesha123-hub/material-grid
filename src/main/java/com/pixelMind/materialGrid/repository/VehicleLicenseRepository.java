@@ -5,10 +5,7 @@ import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -31,26 +28,14 @@ public interface VehicleLicenseRepository extends JpaRepository<VehicleLicense, 
 
     List<VehicleLicense> findByVehicleIdInAndLicenseIdIn(Collection<Long> vehicleIds, Collection<Long> licenseIds);
 
-    /**
-     * Used by the Daily Route PDF report. Returns a List, not Optional -
-     * same rationale as DailyRouteRepository#findByVehicleIdAndDateAndDeletedFalse:
-     * lets the service tell "no license" apart from "duplicate license data",
-     * rather than an opaque Spring Data exception.
-     *
-     * Deliberately does NOT filter by license date range - see the mandatory
-     * rule in the report service.
-     */
     List<VehicleLicense> findByVehicleIdAndDate(Long vehicleId, LocalDate date);
 
-    @Query("""
-            select coalesce(sum(e.license.price), 0)
-            from VehicleLicense e
-            where e.vehicle.id = :vehicleId
-            and e.date = :date
-            and e.status = :status
-            """)
-    BigDecimal sumLicenseAmountByVehicleIdAndDate(
-            @Param("vehicleId") Long vehicleId,
-            @Param("date") LocalDate date,
-            @Param("status") VehicleLicenseStatus status);
+    /**
+     * NEW: backs the date-range Daily Route report's Licence Fee. See
+     * DailyRouteReportServiceImpl#resolveLicenceFeeForRange for the
+     * distinct-license, no-double-counting rule this feeds, and its one
+     * known limitation. Deliberately does NOT filter by License date
+     * range - same mandatory rule as the single-date version.
+     */
+    List<VehicleLicense> findByVehicleIdAndDateBetween(Long vehicleId, LocalDate startDate, LocalDate endDate);
 }

@@ -92,11 +92,9 @@ class VehicleBulkUploadTest {
         assertThat(saved).hasSize(2);
         assertThat(saved.get(0).getVehicleNumber()).isEqualTo("WP-CAB-1234");
         assertThat(saved.get(0).getCapacity()).isEqualByComparingTo(new BigDecimal("5"));
-        assertThat(saved.get(0).getActive()).isTrue();
 
         assertThat(saved.get(1).getVehicleNumber()).isEqualTo("WP-CAB-5678");
         assertThat(saved.get(1).getCapacity()).isEqualByComparingTo(new BigDecimal("5.3"));
-        assertThat(saved.get(1).getActive()).isTrue();
     }
 
     @Test

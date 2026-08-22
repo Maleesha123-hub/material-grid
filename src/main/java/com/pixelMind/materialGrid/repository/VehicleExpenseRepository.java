@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 public interface VehicleExpenseRepository extends JpaRepository<VehicleExpense, Long> {
 
@@ -20,11 +21,6 @@ public interface VehicleExpenseRepository extends JpaRepository<VehicleExpense, 
 
     boolean existsByVehicleId(Long vehicleId);
 
-    /**
-     * SUM aggregate used by the Daily Route PDF report's "Paid Amount".
-     * COALESCE guards against a null SUM when there are zero matching rows,
-     * so the caller never has to null-check.
-     */
     @Query("""
             select coalesce(sum(e.expenses), 0) from VehicleExpense e
             where e.vehicle.id = :vehicleId and e.date = :date and e.deleted = false
@@ -32,15 +28,23 @@ public interface VehicleExpenseRepository extends JpaRepository<VehicleExpense, 
     BigDecimal sumExpensesByVehicleIdAndDate(@Param("vehicleId") Long vehicleId, @Param("date") LocalDate date);
 
     @Query("""
-        select coalesce(sum(e.expenses), 0)
-        from VehicleExpense e
-        where e.vehicle.id = :vehicleId
-          and e.date between :startDate and :endDate
-          and e.deleted = false
-        """)
-    BigDecimal sumExpensesByVehicleIdAndDateRange(
+            select coalesce(sum(e.expenses), 0) from VehicleExpense e
+            where e.vehicle.id = :vehicleId
+              and e.date between :startDate and :endDate
+              and e.deleted = false
+            """)
+    BigDecimal sumExpensesByVehicleIdAndDateBetween(
             @Param("vehicleId") Long vehicleId,
             @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
-    );
+            @Param("endDate") LocalDate endDate);
+
+    /**
+     * NEW: backs the payment receipt's per-date Paid Amount consolidation
+     * (spec sections 11-13). Fetches every raw expense in the range in ONE
+     * query; DailyRouteReportServiceImpl groups these by date and sums both
+     * the per-date and range-wide totals in memory - no query per date, no
+     * query per row (see spec section 30).
+     */
+    List<VehicleExpense> findByVehicleIdAndDateBetweenAndDeletedFalse(
+            Long vehicleId, LocalDate startDate, LocalDate endDate);
 }

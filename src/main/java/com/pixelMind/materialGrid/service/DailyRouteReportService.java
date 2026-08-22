@@ -1,6 +1,6 @@
 package com.pixelMind.materialGrid.service;
 
-import com.pixelMind.materialGrid.dto.response.DailyRouteReportResponse;
+import com.pixelMind.materialGrid.dto.response.DailyRoutePaymentReceipt;
 import com.pixelMind.materialGrid.dto.response.ReceiptSummaryDTO;
 
 import java.time.LocalDate;
@@ -13,7 +13,6 @@ public interface DailyRouteReportService {
      * Licence Fee via VehicleLicense status (no License date-range check -
      * see class Javadoc on the impl), and computes the balance.
      */
-    DailyRouteReportResponse generateReport(LocalDate date, Long vehicleId);
-
+    DailyRoutePaymentReceipt generateReport(LocalDate startDate, LocalDate endDate, Long vehicleId);
     ReceiptSummaryDTO getSummary(LocalDate date, Long vehicleId);
 }
