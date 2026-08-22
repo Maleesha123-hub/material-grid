@@ -83,6 +83,7 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
                 .vehicleNumber(vehicle.getVehicleNumber())
                 .vehicleCapacity(vehicle.getCapacity())
                 .loadCount(dailyRoutes.size())
+                .totalVolume(vehicle.getCapacity().multiply(BigDecimal.valueOf(loadCount)).doubleValue())
                 .totalAmount(totalAmount)
                 .paidAmount(paidAmount)
                 .licenceFee(licenceFee)
@@ -91,15 +92,61 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
     }
 
     @Override
-    public DailyRouteReportResponse getSummary(LocalDate date, Long vehicleId) {
+    public ReceiptSummaryDTO getSummary(LocalDate date, Long vehicleId) {
 
-        Page<DailyRoute> search = dailyRouteRepository.search(
-                date, vehicleId, null, null, Pageable.unpaged()
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Vehicle with ID " + vehicleId + " does not exist", ErrorCodeConstants.VEHICLE_NOT_FOUND)
+                );
+
+        // Daily routes
+        Integer loadCount = dailyRouteRepository.loadCountByVehicleIdAndDate(
+                vehicleId, date
         );
 
+        // Daily expenses
+        BigDecimal dailyExpenses = vehicleExpenseRepository.sumExpensesByVehicleIdAndDate(
+                vehicleId, date
+        );
 
+        // License amount
+        BigDecimal licenseAmount = vehicleLicenseRepository.sumLicenseAmountByVehicleIdAndDate(
+                vehicleId, date, VehicleLicenseStatus.ACTIVE
+        );
 
-        return null;
+        // Gross transport rate
+        BigDecimal dailyGrossAmount = dailyRouteRepository.sumAmountsByVehicleIdAndDate(vehicleId, date);
+
+        return ReceiptSummaryDTO.builder()
+                .totalDispatches(loadCount)
+                .totalVolumes(vehicle.getCapacity().multiply(new BigDecimal(loadCount)).doubleValue())
+                .dailyGrossTransportRate(dailyGrossAmount)
+                .dailyDeduction(dailyExpenses.add(licenseAmount))
+                .payable(dailyGrossAmount.subtract(dailyExpenses.add(licenseAmount)))
+                .build();
+
+    }
+
+    private DailyRoute resolveSingleDailyRoute(Vehicle vehicle, LocalDate date) {
+        List<DailyRoute> dailyRoutes = dailyRouteRepository.findByVehicleIdAndDateAndDeletedFalse(vehicle.getId(), date);
+
+        if (dailyRoutes.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "No daily route found for vehicle " + vehicle.getVehicleNumber() + " on " + date,
+                    ErrorCodeConstants.DAILY_ROUTE_NOT_FOUND);
+        }
+        if (dailyRoutes.size() > 1) {
+            // Business rule guarantees exactly one row for (vehicleId, date).
+            // More than one is a data integrity problem, not something to
+            // arbitrarily resolve by picking the first result.
+            log.error("Data integrity error: {} daily route records found for vehicleId={}, date={}",
+                    dailyRoutes.size(), vehicle.getId(), date);
+            throw new BusinessException(
+                    "Multiple daily route records exist for vehicle " + vehicle.getVehicleNumber()
+                            + " on " + date + ". This indicates a data integrity issue.",
+                    ErrorCodeConstants.DATA_INTEGRITY_ERROR);
+        }
+        return dailyRoutes.get(0);
     }
 
     private BigDecimal resolveLicenceFee(Vehicle vehicle, LocalDate date) {

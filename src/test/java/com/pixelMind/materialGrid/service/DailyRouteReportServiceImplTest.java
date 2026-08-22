@@ -55,7 +55,7 @@ class DailyRouteReportServiceImplTest {
 
     private DailyRoute dailyRoute(Vehicle vehicle) {
         return DailyRoute.builder().id(10L).date(DATE).vehicle(vehicle)
-                .amount(new BigDecimal("10000.0000")).loadCount(11).deleted(false).build();
+                .amount(new BigDecimal("10000.0000")).deleted(false).build();
     }
 
     @Test

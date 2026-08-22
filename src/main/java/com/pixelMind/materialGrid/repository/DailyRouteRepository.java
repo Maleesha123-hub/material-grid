@@ -1,12 +1,14 @@
 package com.pixelMind.materialGrid.repository;
 
 import com.pixelMind.materialGrid.entity.DailyRoute;
+import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -15,7 +17,7 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
 
     @Query("""
             select d from DailyRoute d
-            where d.deleted = true
+            where d.deleted = false
               and (:date is null or d.date = :date)
               and (:vehicleId is null or d.vehicle.id = :vehicleId)
               and (:routeId is null or d.route.id = :routeId)
@@ -54,6 +56,24 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
      * IncorrectResultSizeDataAccessException.
      */
     List<DailyRoute> findByVehicleIdAndDateAndDeletedFalse(Long vehicleId, LocalDate date);
+
+    @Query("""
+            select coalesce(sum(e.amount), 0)
+            from DailyRoute e
+            where e.vehicle.id = :vehicleId
+            and e.date = :date
+            and e.deleted = false
+            """)
+    BigDecimal sumAmountsByVehicleIdAndDate(Long vehicleId, LocalDate date);
+
+    @Query("""
+            select COUNT(e.id)
+            from DailyRoute e
+            where e.vehicle.id = :vehicleId
+            and e.date = :date
+            and e.deleted = false
+            """)
+    Integer loadCountByVehicleIdAndDate(Long vehicleId, LocalDate date);
 
     List<DailyRoute> findByVehicleIdAndDateBetweenAndDeletedFalse(
             Long vehicleId,
