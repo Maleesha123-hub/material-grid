@@ -20,7 +20,6 @@ public class VehicleMapper {
                 .createdDate(vehicle.getCreatedDate())
                 .modifiedBy(vehicle.getModifiedBy())
                 .modifiedDate(vehicle.getModifiedDate())
-                .status(vehicle.getActive() ? StatusConstants.ACTIVE : StatusConstants.INACTIVE)
                 .build();
     }
 }

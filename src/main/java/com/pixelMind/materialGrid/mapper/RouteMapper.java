@@ -22,7 +22,6 @@ public class RouteMapper {
                 .createdDate(route.getCreatedDate())
                 .modifiedBy(route.getModifiedBy())
                 .modifiedDate(route.getModifiedDate())
-                .status(route.getActive() ? StatusConstants.ACTIVE : StatusConstants.INACTIVE)
                 .build();
     }
 }

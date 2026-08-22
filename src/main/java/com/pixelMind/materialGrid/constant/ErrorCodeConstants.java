@@ -14,7 +14,6 @@ public final class ErrorCodeConstants {
     public static final String BUSINESS_RULE_VIOLATION = "BUSINESS_RULE_VIOLATION";
     public static final String UNAUTHORIZED = "UNAUTHORIZED";
     public static final String INTERNAL_ERROR = "INTERNAL_ERROR";
-
     public static final String ROUTE_NOT_FOUND = "ROUTE_NOT_FOUND";
     public static final String DUPLICATE_ROUTE_CODE = "DUPLICATE_ROUTE_CODE";
     public static final String VEHICLE_NOT_FOUND = "VEHICLE_NOT_FOUND";
@@ -24,13 +23,8 @@ public final class ErrorCodeConstants {
     public static final String VEHICLE_LICENSE_NOT_FOUND = "VEHICLE_LICENSE_NOT_FOUND";
     public static final String VEHICLE_EXPENSE_NOT_FOUND = "VEHICLE_EXPENSE_NOT_FOUND";
     public static final String DAILY_ROUTE_NOT_FOUND = "DAILY_ROUTE_NOT_FOUND";
-
     public static final String ACTIVE_PRICE_RATE_NOT_FOUND = "ACTIVE_PRICE_RATE_NOT_FOUND";
-
-    // New for the Daily Route PDF report: covers duplicate DailyRoute rows,
-    // duplicate VehicleLicense rows, and an ACTIVE VehicleLicense pointing
-    // at a nonexistent License - cases that should be impossible under the
-    // business rules and therefore deserve a distinct code from ordinary
-    // validation/not-found errors.
     public static final String DATA_INTEGRITY_ERROR = "DATA_INTEGRITY_ERROR";
+    public static final String DUPLICATE_FILE_UPLOAD = "DUPLICATE_FILE_UPLOAD";
+    public static final String FILE_HISTORY_NOT_FOUND = "FILE_HISTORY_NOT_FOUND";
 }

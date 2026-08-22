@@ -49,16 +49,17 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
     @Override
     @Transactional(readOnly = true)
     public DailyRouteReportResponse generateReport(LocalDate date, Long vehicleId) {
-
-        if (date == null &&  vehicleId == null) {
-            return null;
-        }
-
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Vehicle with ID " + vehicleId + " does not exist", ErrorCodeConstants.VEHICLE_NOT_FOUND));
 
-        DailyRoute dailyRoute = resolveSingleDailyRoute(vehicle, date);
+        List<DailyRoute> dailyRoutes = dailyRouteRepository.findByVehicleIdAndDateAndDeletedFalse(vehicle.getId(), date);
+
+        if (dailyRoutes.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "No daily route found for vehicle " + vehicle.getVehicleNumber() + " on " + date,
+                    ErrorCodeConstants.DAILY_ROUTE_NOT_FOUND);
+        }
 
         BigDecimal paidAmount = vehicleExpenseRepository.sumExpensesByVehicleIdAndDate(vehicleId, date);
         if (paidAmount == null) {
@@ -67,7 +68,10 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
 
         BigDecimal licenceFee = resolveLicenceFee(vehicle, date);
 
-        BigDecimal totalAmount = dailyRoute.getAmount();
+        BigDecimal totalAmount = dailyRoutes.stream()
+                .map(DailyRoute::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         BigDecimal balance = totalAmount.subtract(paidAmount.add(licenceFee));
 
         log.info("Daily route report generated: vehicleId={}, date={}, totalAmount={}, paidAmount={}, "
@@ -78,6 +82,7 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
                 .date(date)
                 .vehicleNumber(vehicle.getVehicleNumber())
                 .vehicleCapacity(vehicle.getCapacity())
+                .loadCount(dailyRoutes.size())
                 .totalAmount(totalAmount)
                 .paidAmount(paidAmount)
                 .licenceFee(licenceFee)
@@ -97,28 +102,6 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
         return null;
     }
 
-    private DailyRoute resolveSingleDailyRoute(Vehicle vehicle, LocalDate date) {
-        List<DailyRoute> dailyRoutes = dailyRouteRepository.findByVehicleIdAndDateAndDeletedFalse(vehicle.getId(), date);
-
-        if (dailyRoutes.isEmpty()) {
-            throw new ResourceNotFoundException(
-                    "No daily route found for vehicle " + vehicle.getVehicleNumber() + " on " + date,
-                    ErrorCodeConstants.DAILY_ROUTE_NOT_FOUND);
-        }
-        if (dailyRoutes.size() > 1) {
-            // Business rule guarantees exactly one row for (vehicleId, date).
-            // More than one is a data integrity problem, not something to
-            // arbitrarily resolve by picking the first result.
-            log.error("Data integrity error: {} daily route records found for vehicleId={}, date={}",
-                    dailyRoutes.size(), vehicle.getId(), date);
-            throw new BusinessException(
-                    "Multiple daily route records exist for vehicle " + vehicle.getVehicleNumber()
-                            + " on " + date + ". This indicates a data integrity issue.",
-                    ErrorCodeConstants.DATA_INTEGRITY_ERROR);
-        }
-        return dailyRoutes.get(0);
-    }
-
     private BigDecimal resolveLicenceFee(Vehicle vehicle, LocalDate date) {
         List<VehicleLicense> vehicleLicenses = vehicleLicenseRepository.findByVehicleIdAndDate(vehicle.getId(), date);
 
@@ -134,7 +117,7 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
                     ErrorCodeConstants.DATA_INTEGRITY_ERROR);
         }
 
-        VehicleLicense vehicleLicense = vehicleLicenses.get(0);
+        VehicleLicense vehicleLicense = vehicleLicenses.getFirst();
         if (vehicleLicense.getStatus() != VehicleLicenseStatus.ACTIVE) {
             return BigDecimal.ZERO; // INACTIVE - per spec section 17
         }

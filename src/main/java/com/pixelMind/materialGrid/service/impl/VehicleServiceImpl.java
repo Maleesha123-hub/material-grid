@@ -73,7 +73,6 @@ public class VehicleServiceImpl implements VehicleService {
                 .capacity(request.getCapacity())
                 .createdBy(actor)
                 .modifiedBy(actor)
-                .active(true)
                 .build();
 
         // Application-level check above is the fast, friendly-error path;
@@ -106,7 +105,6 @@ public class VehicleServiceImpl implements VehicleService {
     public VehicleResponse updateVehicle(Long id, VehicleUpdateRequest request) {
         Vehicle vehicle = findOrThrow(id);
         vehicle.setVehicleNumber(request.getVehicleNumber());
-        vehicle.setActive(request.getStatus());
         vehicle.setCapacity(request.getCapacity());
         vehicle.setModifiedBy(SecurityUtil.getCurrentUsername());
 
@@ -248,7 +246,6 @@ public class VehicleServiceImpl implements VehicleService {
                 entities.add(Vehicle.builder()
                         .vehicleNumber(r.vehicleNumber())
                         .capacity(r.capacity())
-                        .active(true)
                         .createdBy(actor)
                         .modifiedBy(actor)
                         .build());

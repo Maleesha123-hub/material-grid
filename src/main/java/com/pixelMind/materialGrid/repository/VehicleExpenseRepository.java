@@ -30,4 +30,17 @@ public interface VehicleExpenseRepository extends JpaRepository<VehicleExpense, 
             where e.vehicle.id = :vehicleId and e.date = :date and e.deleted = false
             """)
     BigDecimal sumExpensesByVehicleIdAndDate(@Param("vehicleId") Long vehicleId, @Param("date") LocalDate date);
+
+    @Query("""
+        select coalesce(sum(e.expenses), 0)
+        from VehicleExpense e
+        where e.vehicle.id = :vehicleId
+          and e.date between :startDate and :endDate
+          and e.deleted = false
+        """)
+    BigDecimal sumExpensesByVehicleIdAndDateRange(
+            @Param("vehicleId") Long vehicleId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 }

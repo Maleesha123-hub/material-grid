@@ -54,4 +54,10 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
      * IncorrectResultSizeDataAccessException.
      */
     List<DailyRoute> findByVehicleIdAndDateAndDeletedFalse(Long vehicleId, LocalDate date);
+
+    List<DailyRoute> findByVehicleIdAndDateBetweenAndDeletedFalse(
+            Long vehicleId,
+            LocalDate startDate,
+            LocalDate endDate
+    );
 }

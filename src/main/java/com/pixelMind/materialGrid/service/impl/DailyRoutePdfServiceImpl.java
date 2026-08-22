@@ -136,8 +136,8 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
                         String totalAmount, String paidAmount, String licenceFee, String balance, Font font) {
         addCell(table, no, Element.ALIGN_CENTER, font);
         addCell(table, lorryNo, Element.ALIGN_LEFT, font);
-        addCell(table, cube, Element.ALIGN_CENTER, font);
-        addCell(table, loadCount, Element.ALIGN_CENTER, font);
+        addCell(table, cube, Element.ALIGN_RIGHT, font);
+        addCell(table, loadCount, Element.ALIGN_RIGHT, font);
         addCell(table, totalAmount, Element.ALIGN_RIGHT, font);
         addCell(table, paidAmount, Element.ALIGN_RIGHT, font);
         addCell(table, licenceFee, Element.ALIGN_RIGHT, font);

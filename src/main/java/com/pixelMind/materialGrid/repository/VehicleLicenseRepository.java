@@ -24,6 +24,8 @@ public interface VehicleLicenseRepository extends JpaRepository<VehicleLicense, 
 
     boolean existsByLicenseId(Long licenseId);
 
+    boolean existsByVehicleIdAndLicenseId(Long vehicleId, Long licenseId);
+
     List<VehicleLicense> findByVehicleIdInAndLicenseIdIn(Collection<Long> vehicleIds, Collection<Long> licenseIds);
 
     /**

@@ -20,21 +20,6 @@ import lombok.experimental.SuperBuilder;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * Represents a historical operational + financial record - soft-deleted,
- * same rationale as VehicleExpense. {@code priceRate} is a normal FK to the
- * specific PriceRate row used at creation/last-update time. {@code amount}
- * is computed server-side and persisted, never trusted from client input.
- * {@code checkBy} records who physically checked/verified the route.
- *
- * {@code loadCount}: ADDED for the Daily Route PDF report feature. This is
- * currently an UNRESOLVED GAP flagged during that feature's implementation -
- * no existing part of the project populated this value before now. It is
- * nullable and NOT yet threaded through DailyRouteCreateRequest,
- * DailyRouteUpdateRequest, DailyRouteServiceImpl, or the Excel importer;
- * until that follow-up work is done, it will read as null (reported as 0)
- * for every route. See the Daily Route PDF feature's architectural notes.
- */
 @Entity
 @Table(name = "daily_routes")
 @Getter
@@ -69,6 +54,14 @@ public class DailyRoute extends BaseAuditableEntity {
 
     @Column(name = "check_by", nullable = false, length = 100)
     private String checkBy;
+
+    /**
+     * ADDED: null for manually-created daily routes, always populated for
+     * daily routes created via Excel upload (DailyRouteImportServiceImpl).
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "file_history_id", nullable = true)
+    private FileHistory fileHistory;
 
     @Column(name = "deleted", nullable = false)
     @Builder.Default

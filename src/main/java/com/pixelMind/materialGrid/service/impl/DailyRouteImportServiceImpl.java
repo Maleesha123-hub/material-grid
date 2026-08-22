@@ -5,11 +5,13 @@ import com.pixelMind.materialGrid.constant.ExcelConstants;
 import com.pixelMind.materialGrid.dto.response.BulkUploadResponse;
 import com.pixelMind.materialGrid.dto.response.ExcelValidationError;
 import com.pixelMind.materialGrid.entity.DailyRoute;
+import com.pixelMind.materialGrid.entity.FileHistory;
 import com.pixelMind.materialGrid.entity.License;
 import com.pixelMind.materialGrid.entity.PriceRate;
 import com.pixelMind.materialGrid.entity.Route;
 import com.pixelMind.materialGrid.entity.Vehicle;
 import com.pixelMind.materialGrid.entity.VehicleLicense;
+import com.pixelMind.materialGrid.entity.enums.FileType;
 import com.pixelMind.materialGrid.entity.enums.PriceRateStatus;
 import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
 import com.pixelMind.materialGrid.exception.BusinessException;
@@ -21,6 +23,7 @@ import com.pixelMind.materialGrid.repository.RouteRepository;
 import com.pixelMind.materialGrid.repository.VehicleLicenseRepository;
 import com.pixelMind.materialGrid.repository.VehicleRepository;
 import com.pixelMind.materialGrid.service.DailyRouteImportService;
+import com.pixelMind.materialGrid.service.FileHistoryService;
 import com.pixelMind.materialGrid.util.ExcelUtil;
 import com.pixelMind.materialGrid.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
@@ -35,24 +38,16 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * See VehicleExpenseImportServiceImpl for the rationale behind the
- * single-method @Transactional approach. Here it also covers requirement
- * "VehicleLicense updates must be in the same transaction as DailyRoute
- * inserts, and roll back together" - both mutations happen in this one
- * method, so a failure anywhere after the VehicleLicense saves rolls those
- * back too via Spring's standard unchecked-exception rollback.
+ * MODIFIED: same File History wiring pattern as VehicleExpenseImportServiceImpl
+ * - duplicate-file check before parsing, FileHistory created (in this same
+ * transaction) only after every row + business rule passes, then tagged
+ * onto every created DailyRoute alongside the existing VehicleLicense
+ * activation logic. Nothing about the existing validation/duplicate-
+ * detection/rollback behavior changes.
  */
 @Slf4j
 @Service
@@ -65,17 +60,20 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
     private final VehicleLicenseRepository vehicleLicenseRepository;
     private final DailyRouteRepository dailyRouteRepository;
     private final PriceRateRepository priceRateRepository;
+    private final FileHistoryService fileHistoryService;
 
     private record RawRow(int rowNumber, LocalDate date, String vehicleNumber, String routeCode, String checkBy) {
     }
 
-    private record ResolvedRow(int rowNumber, LocalDate date, Vehicle vehicle, Route route,
-                               VehicleLicense vehicleLicense, String checkBy) {
+    private record ResolvedRow(LocalDate date, Vehicle vehicle, Route route, License license, String checkBy) {
     }
 
     @Override
     @Transactional
     public BulkUploadResponse importFromExcel(MultipartFile file) {
+        String fileName = ExcelUtil.extractSafeFileName(file);
+        fileHistoryService.validateNotAlreadyUploaded(fileName, FileType.DAILY_ROUTE);
+
         Workbook workbook = ExcelUtil.openWorkbook(file);
         try {
             Sheet sheet = ExcelUtil.firstSheet(workbook);
@@ -126,7 +124,6 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                         List.of(error(0, "File", null, "No data rows found")), 0);
             }
 
-            // --- Bulk-fetch vehicles and routes (one query each) ---
             Set<String> distinctVehicleNumbers = rawRows.stream()
                     .map(RawRow::vehicleNumber).filter(v -> !v.isBlank()).collect(Collectors.toSet());
             Map<String, Vehicle> vehicleByNumber = vehicleRepository.findByVehicleNumberIn(distinctVehicleNumbers).stream()
@@ -137,8 +134,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
             Map<String, Route> routeByCode = routeRepository.findByRouteCodeIn(distinctRouteCodes).stream()
                     .collect(Collectors.toMap(Route::getRouteCode, r -> r));
 
-            // --- Bulk-fetch licenses covering the file's whole date span (one query) ---
-            List<LocalDate> validDates = rawRows.stream().map(RawRow::date).filter(d -> d != null).toList();
+            List<LocalDate> validDates = rawRows.stream().map(RawRow::date).filter(Objects::nonNull).toList();
             List<License> candidateLicenses = List.of();
             if (!validDates.isEmpty()) {
                 LocalDate minDate = validDates.stream().min(Comparator.naturalOrder()).get();
@@ -147,145 +143,73 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
             }
             final List<License> licensesForRange = candidateLicenses;
 
-            // --- Resolve vehicle, route, license per row ---
-            record PartialRow(RawRow raw, Vehicle vehicle, Route route, License license) {
-            }
-            List<PartialRow> partials = new ArrayList<>();
+            List<ResolvedRow> resolved = new ArrayList<>();
 
             for (RawRow raw : rawRows) {
-                Vehicle vehicle = null;
-                Route route = null;
-                License license = null;
-                boolean rowHasError = false;
+                License license;
 
-                if (!raw.vehicleNumber().isBlank()) {
-                    vehicle = vehicleByNumber.get(raw.vehicleNumber());
+                Vehicle vehicle = vehicleByNumber.get(raw.vehicleNumber());
                     if (vehicle == null) {
                         errors.add(error(raw.rowNumber(), "Vehicle Number", raw.vehicleNumber(),
                                 "Vehicle number '" + raw.vehicleNumber() + "' does not exist"));
-                        rowHasError = true;
+                        continue;
                     }
-                } else {
-                    rowHasError = true;
-                }
 
-                if (!raw.routeCode().isBlank()) {
-                    route = routeByCode.get(raw.routeCode());
+                Route  route = routeByCode.get(raw.routeCode());
                     if (route == null) {
                         errors.add(error(raw.rowNumber(), "Route Code", raw.routeCode(),
                                 "Route code '" + raw.routeCode() + "' does not exist"));
-                        rowHasError = true;
+                        continue;
                     }
-                } else {
-                    rowHasError = true;
-                }
 
-                if (raw.date() != null) {
                     List<License> matches = licensesForRange.stream()
                             .filter(l -> !l.getStartDate().isAfter(raw.date()) && !l.getEndDate().isBefore(raw.date()))
                             .toList();
                     if (matches.isEmpty()) {
                         errors.add(error(raw.rowNumber(), "Date", raw.date().toString(),
                                 "No valid license found for date " + raw.date()));
-                        rowHasError = true;
+                        continue;
                     } else if (matches.size() > 1) {
                         errors.add(error(raw.rowNumber(), "Date", raw.date().toString(),
                                 "Multiple valid licenses found for date " + raw.date() + "; cannot determine which to use"));
-                        rowHasError = true;
+                        continue;
                     } else {
-                        license = matches.get(0);
+                        license = matches.getFirst();
                     }
-                } else {
-                    rowHasError = true;
-                }
 
                 if (raw.checkBy().isBlank()) {
-                    rowHasError = true;
-                }
-
-                if (!rowHasError) {
-                    partials.add(new PartialRow(raw, vehicle, route, license));
-                }
-            }
-
-            // --- Bulk-fetch VehicleLicenses for every (vehicle, license) pair actually needed ---
-            Set<Long> vehicleIds = partials.stream().map(p -> p.vehicle().getId()).collect(Collectors.toSet());
-            Set<Long> licenseIds = partials.stream().map(p -> p.license().getId()).collect(Collectors.toSet());
-            Map<String, VehicleLicense> vehicleLicenseByPair = new HashMap<>();
-            if (!vehicleIds.isEmpty() && !licenseIds.isEmpty()) {
-                for (VehicleLicense vl : vehicleLicenseRepository.findByVehicleIdInAndLicenseIdIn(vehicleIds, licenseIds)) {
-                    vehicleLicenseByPair.put(pairKey(vl.getVehicle().getId(), vl.getLicense().getId()), vl);
-                }
-            }
-
-            List<ResolvedRow> resolved = new ArrayList<>();
-            for (PartialRow p : partials) {
-                String key = pairKey(p.vehicle().getId(), p.license().getId());
-                VehicleLicense vehicleLicense = vehicleLicenseByPair.get(key);
-                if (vehicleLicense == null) {
-                    errors.add(error(p.raw().rowNumber(), "Vehicle License", null,
-                            "No vehicle license found for vehicle '" + p.vehicle().getVehicleNumber()
-                                    + "' and license '" + p.license().getLicenseCode() + "'"));
                     continue;
                 }
-                resolved.add(new ResolvedRow(p.raw().rowNumber(), p.raw().date(), p.vehicle(), p.route(),
-                        vehicleLicense, p.raw().checkBy()));
-            }
 
-            // --- Duplicate detection: within the file, and against existing history ---
-            Set<String> seenInFile = new HashSet<>();
-            for (ResolvedRow row : resolved) {
-                String businessKey = row.date() + "|" + row.vehicle().getId() + "|" + row.route().getId();
-                if (!seenInFile.add(businessKey)) {
-                    errors.add(error(row.rowNumber(), "Duplicate", null,
-                            "Duplicate daily route in this file for date " + row.date() + ", vehicle '"
-                                    + row.vehicle().getVehicleNumber() + "', route '" + row.route().getRouteCode() + "'"));
-                }
-            }
+                resolved.add(new ResolvedRow(raw.date, vehicle, route, license, raw.checkBy()));
 
-            if (!resolved.isEmpty()) {
-                Set<LocalDate> dates = resolved.stream().map(ResolvedRow::date).collect(Collectors.toSet());
-                Set<Long> vIds = resolved.stream().map(r -> r.vehicle().getId()).collect(Collectors.toSet());
-                Set<Long> rIds = resolved.stream().map(r -> r.route().getId()).collect(Collectors.toSet());
-                Set<String> existingKeys = dailyRouteRepository.findPotentialDuplicates(dates, vIds, rIds).stream()
-                        .map(d -> d.getDate() + "|" + d.getVehicle().getId() + "|" + d.getRoute().getId())
-                        .collect(Collectors.toSet());
-
-                for (ResolvedRow row : resolved) {
-                    String businessKey = row.date() + "|" + row.vehicle().getId() + "|" + row.route().getId();
-                    if (existingKeys.contains(businessKey)) {
-                        errors.add(error(row.rowNumber(), "Duplicate", null,
-                                "A daily route already exists for date " + row.date() + ", vehicle '"
-                                        + row.vehicle().getVehicleNumber() + "', route '" + row.route().getRouteCode() + "'"));
-                    }
-                }
             }
 
             if (!errors.isEmpty()) {
                 throw new ExcelValidationException("Daily route upload validation failed", errors, rawRows.size());
             }
 
-            // --- All rows valid: resolve active price rate, then write ---
             PriceRate activePriceRate = priceRateRepository.findByStatus(PriceRateStatus.ACTIVE)
                     .orElseThrow(() -> new BusinessException(
                             "No active price rate is available.", ErrorCodeConstants.ACTIVE_PRICE_RATE_NOT_FOUND));
 
+            FileHistory fileHistory = fileHistoryService.createFileHistory(fileName, FileType.DAILY_ROUTE);
             String actor = SecurityUtil.getCurrentUsername();
 
-            Map<Long, VehicleLicense> toActivate = new LinkedHashMap<>();
-            for (ResolvedRow row : resolved) {
-                VehicleLicense vl = row.vehicleLicense();
-                if (vl.getStatus() == VehicleLicenseStatus.INACTIVE) {
-                    vl.setStatus(VehicleLicenseStatus.ACTIVE);
-                    vl.setDate(row.date());
-                    vl.setModifiedBy(actor);
-                    toActivate.put(vl.getId(), vl);
-                }
-            }
-            if (!toActivate.isEmpty()) {
-                vehicleLicenseRepository.saveAll(toActivate.values());
-                log.info("Bulk daily route upload: activated {} vehicle license(s), by={}", toActivate.size(), actor);
-            }
+            resolved.stream()
+                    .filter(row -> !vehicleLicenseRepository.existsByVehicleIdAndLicenseId(row.vehicle.getId(), row.license.getId()))
+                            .forEach(row -> {
+                                VehicleLicense vehicleLicense = VehicleLicense.builder()
+                                        .vehicle(row.vehicle)
+                                        .license(row.license)
+                                        .date(row.date)
+                                        .status(VehicleLicenseStatus.ACTIVE)
+                                        .createdBy(actor)
+                                        .modifiedBy(actor)
+                                        .build();
+                                VehicleLicense saved = vehicleLicenseRepository.save(vehicleLicense);
+                                log.info("Bulk daily route upload: activated {} vehicle license, by={}", saved.getId(), actor);
+                            });
 
             List<DailyRoute> entities = (List<DailyRoute>) resolved.stream()
                     .map(row -> DailyRoute.builder()
@@ -296,6 +220,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                             .amount(row.route().getKm().multiply(activePriceRate.getPrice())
                                     .setScale(4, RoundingMode.HALF_UP))
                             .checkBy(row.checkBy())
+                            .fileHistory(fileHistory)
                             .deleted(false)
                             .createdBy(actor)
                             .modifiedBy(actor)
@@ -303,7 +228,8 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                     .toList();
 
             dailyRouteRepository.saveAll(entities);
-            log.info("Bulk daily route upload: {} rows inserted, by={}", entities.size(), actor);
+            log.info("Bulk daily route upload: {} rows inserted, fileHistoryId={}, by={}",
+                    entities.size(), fileHistory.getId(), actor);
 
             return BulkUploadResponse.builder()
                     .success(true)
@@ -312,6 +238,9 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                     .successCount(entities.size())
                     .errorCount(0)
                     .errors(List.of())
+                    .fileHistoryId(fileHistory.getId())
+                    .fileName(fileName)
+                    .fileType(FileType.DAILY_ROUTE.name())
                     .build();
         } finally {
             try {

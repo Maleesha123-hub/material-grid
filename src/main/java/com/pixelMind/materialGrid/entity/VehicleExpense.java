@@ -20,13 +20,6 @@ import lombok.experimental.SuperBuilder;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * Represents a historical financial record. Deleting one destroys audit
- * trail / accounting history, so this entity is soft-deleted: the "delete"
- * API sets {@code deleted = true} rather than issuing a SQL DELETE. All
- * repository read paths filter on {@code deleted = false} by default. See
- * VehicleExpenseServiceImpl for the rationale.
- */
 @Entity
 @Table(name = "vehicle_expenses")
 @Getter
@@ -50,6 +43,14 @@ public class VehicleExpense extends BaseAuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "vehicle_id", nullable = false)
     private Vehicle vehicle;
+
+    /**
+     * ADDED: null for manually-created expenses, always populated for
+     * expenses created via Excel upload (VehicleExpenseImportServiceImpl).
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "file_history_id", nullable = true)
+    private FileHistory fileHistory;
 
     @Column(name = "deleted", nullable = false)
     @Builder.Default

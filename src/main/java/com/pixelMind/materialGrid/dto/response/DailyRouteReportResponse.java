@@ -20,7 +20,7 @@ import java.time.LocalDate;
 public class DailyRouteReportResponse {
     private LocalDate date;
     private String vehicleNumber;
-    private java.math.BigDecimal vehicleCapacity;
+    private BigDecimal vehicleCapacity;
     private Integer loadCount;
     private BigDecimal totalAmount;
     private BigDecimal paidAmount;

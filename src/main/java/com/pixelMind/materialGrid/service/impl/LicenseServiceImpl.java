@@ -52,7 +52,6 @@ public class LicenseServiceImpl implements LicenseService {
                 .price(request.getPrice())
                 .createdBy(actor)
                 .modifiedBy(actor)
-                .active(true)
                 .build();
 
         License saved = licenseRepository.save(license);
@@ -83,7 +82,6 @@ public class LicenseServiceImpl implements LicenseService {
         license.setEndDate(request.getEndDate());
         license.setPrice(request.getPrice());
         license.setModifiedBy(SecurityUtil.getCurrentUsername());
-        license.setActive(request.getStatus());
         // licenseCode is immutable by design - never updated here.
 
         License saved = licenseRepository.save(license);

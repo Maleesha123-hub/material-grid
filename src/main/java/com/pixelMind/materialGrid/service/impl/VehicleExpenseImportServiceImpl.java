@@ -3,11 +3,14 @@ package com.pixelMind.materialGrid.service.impl;
 import com.pixelMind.materialGrid.constant.ExcelConstants;
 import com.pixelMind.materialGrid.dto.response.BulkUploadResponse;
 import com.pixelMind.materialGrid.dto.response.ExcelValidationError;
+import com.pixelMind.materialGrid.entity.FileHistory;
 import com.pixelMind.materialGrid.entity.Vehicle;
 import com.pixelMind.materialGrid.entity.VehicleExpense;
+import com.pixelMind.materialGrid.entity.enums.FileType;
 import com.pixelMind.materialGrid.exception.ExcelValidationException;
 import com.pixelMind.materialGrid.repository.VehicleExpenseRepository;
 import com.pixelMind.materialGrid.repository.VehicleRepository;
+import com.pixelMind.materialGrid.service.FileHistoryService;
 import com.pixelMind.materialGrid.service.VehicleExpenseImportService;
 import com.pixelMind.materialGrid.util.ExcelUtil;
 import com.pixelMind.materialGrid.util.SecurityUtil;
@@ -31,10 +34,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * The whole method is @Transactional: validation reads participate
- * harmlessly, and if ExcelValidationException is thrown mid-method nothing
- * has been written yet, so there is nothing to roll back. This gives
- * all-or-nothing semantics without a separate self-invoked "phase 2" method.
+ * MODIFIED: now depends on FileHistoryService and performs the duplicate-
+ * file check (fileName + VEHICLE_EXPENSE) before opening the workbook, and
+ * creates the FileHistory row (in this same transaction - see
+ * FileHistoryServiceImpl's Javadoc) immediately before saving the validated
+ * VehicleExpense rows, tagging every one of them with that FileHistory.
+ * All prior validation/bulk-lookup/all-or-nothing behavior is unchanged.
  */
 @Slf4j
 @Service
@@ -43,6 +48,7 @@ public class VehicleExpenseImportServiceImpl implements VehicleExpenseImportServ
 
     private final VehicleRepository vehicleRepository;
     private final VehicleExpenseRepository vehicleExpenseRepository;
+    private final FileHistoryService fileHistoryService;
 
     private record RawRow(int rowNumber, LocalDate date, String vehicleNumber, BigDecimal expense) {
     }
@@ -53,6 +59,9 @@ public class VehicleExpenseImportServiceImpl implements VehicleExpenseImportServ
     @Override
     @Transactional
     public BulkUploadResponse importFromExcel(MultipartFile file) {
+        String fileName = ExcelUtil.extractSafeFileName(file);
+        fileHistoryService.validateNotAlreadyUploaded(fileName, FileType.VEHICLE_EXPENSE);
+
         Workbook workbook = ExcelUtil.openWorkbook(file);
         try {
             Sheet sheet = ExcelUtil.firstSheet(workbook);
@@ -71,7 +80,7 @@ public class VehicleExpenseImportServiceImpl implements VehicleExpenseImportServ
                 if (ExcelUtil.isRowEmpty(row)) {
                     continue;
                 }
-                int rowNumber = r + 1; // 1-indexed as seen in Excel (header = row 1)
+                int rowNumber = r + 1;
 
                 Optional<LocalDate> date = ExcelUtil.readDate(row, dateCol);
                 if (date.isEmpty()) {
@@ -101,8 +110,6 @@ public class VehicleExpenseImportServiceImpl implements VehicleExpenseImportServ
                         List.of(error(0, "File", null, "No data rows found")), 0);
             }
 
-            // One query for every distinct vehicle number in the file,
-            // instead of one query per row.
             Set<String> distinctVehicleNumbers = rawRows.stream()
                     .map(RawRow::vehicleNumber)
                     .filter(v -> !v.isBlank())
@@ -113,7 +120,7 @@ public class VehicleExpenseImportServiceImpl implements VehicleExpenseImportServ
             List<ResolvedRow> resolved = new ArrayList<>();
             for (RawRow raw : rawRows) {
                 if (raw.vehicleNumber().isBlank()) {
-                    continue; // already reported above
+                    continue;
                 }
                 Vehicle vehicle = vehicleByNumber.get(raw.vehicleNumber());
                 if (vehicle == null) {
@@ -122,7 +129,7 @@ public class VehicleExpenseImportServiceImpl implements VehicleExpenseImportServ
                     continue;
                 }
                 if (raw.date() == null || raw.expense() == null) {
-                    continue; // already reported above
+                    continue;
                 }
                 resolved.add(new ResolvedRow(raw.date(), vehicle, raw.expense()));
             }
@@ -131,12 +138,15 @@ public class VehicleExpenseImportServiceImpl implements VehicleExpenseImportServ
                 throw new ExcelValidationException("Vehicle expense upload validation failed", errors, rawRows.size());
             }
 
+            FileHistory fileHistory = fileHistoryService.createFileHistory(fileName, FileType.VEHICLE_EXPENSE);
             String actor = SecurityUtil.getCurrentUsername();
+
             List<VehicleExpense> entities = (List<VehicleExpense>) resolved.stream()
                     .map(r -> VehicleExpense.builder()
                             .date(r.date())
                             .expenses(r.expense())
                             .vehicle(r.vehicle())
+                            .fileHistory(fileHistory)
                             .deleted(false)
                             .createdBy(actor)
                             .modifiedBy(actor)
@@ -144,7 +154,8 @@ public class VehicleExpenseImportServiceImpl implements VehicleExpenseImportServ
                     .toList();
 
             vehicleExpenseRepository.saveAll(entities);
-            log.info("Bulk vehicle expense upload: {} rows inserted, by={}", entities.size(), actor);
+            log.info("Bulk vehicle expense upload: {} rows inserted, fileHistoryId={}, by={}",
+                    entities.size(), fileHistory.getId(), actor);
 
             return BulkUploadResponse.builder()
                     .success(true)
@@ -153,6 +164,9 @@ public class VehicleExpenseImportServiceImpl implements VehicleExpenseImportServ
                     .successCount(entities.size())
                     .errorCount(0)
                     .errors(List.of())
+                    .fileHistoryId(fileHistory.getId())
+                    .fileName(fileName)
+                    .fileType(FileType.VEHICLE_EXPENSE.name())
                     .build();
         } finally {
             try {
