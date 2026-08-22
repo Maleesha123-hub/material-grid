@@ -2,6 +2,7 @@ package com.pixelMind.materialGrid.service.impl;
 
 import com.pixelMind.materialGrid.constant.ErrorCodeConstants;
 import com.pixelMind.materialGrid.dto.response.DailyRouteReportResponse;
+import com.pixelMind.materialGrid.dto.response.ReceiptSummaryDTO;
 import com.pixelMind.materialGrid.entity.DailyRoute;
 import com.pixelMind.materialGrid.entity.License;
 import com.pixelMind.materialGrid.entity.Vehicle;
@@ -17,8 +18,6 @@ import com.pixelMind.materialGrid.repository.VehicleRepository;
 import com.pixelMind.materialGrid.service.DailyRouteReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -83,7 +82,7 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
                 .vehicleNumber(vehicle.getVehicleNumber())
                 .vehicleCapacity(vehicle.getCapacity())
                 .loadCount(dailyRoutes.size())
-                .totalVolume(vehicle.getCapacity().multiply(BigDecimal.valueOf(loadCount)).doubleValue())
+                .totalVolume(vehicle.getCapacity().multiply(BigDecimal.valueOf(dailyRoutes.size())).doubleValue())
                 .totalAmount(totalAmount)
                 .paidAmount(paidAmount)
                 .licenceFee(licenceFee)
@@ -136,9 +135,6 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
                     ErrorCodeConstants.DAILY_ROUTE_NOT_FOUND);
         }
         if (dailyRoutes.size() > 1) {
-            // Business rule guarantees exactly one row for (vehicleId, date).
-            // More than one is a data integrity problem, not something to
-            // arbitrarily resolve by picking the first result.
             log.error("Data integrity error: {} daily route records found for vehicleId={}, date={}",
                     dailyRoutes.size(), vehicle.getId(), date);
             throw new BusinessException(
