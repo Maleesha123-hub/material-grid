@@ -54,7 +54,7 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
 
     @Override
     public byte[] generatePdf(DailyRoutePaymentReceipt receipt) {
-        Document document = new Document(PageSize.A4.rotate(), 30, 30, 30, 30);
+        Document document = new Document(PageSize.A4.rotate(), 20, 20, 20, 20);
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             PdfWriter.getInstance(document, out);
@@ -82,7 +82,7 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
 
         Paragraph tagline = new Paragraph(ReportConstants.COMPANY_TAGLINE, TAGLINE_FONT);
         tagline.setAlignment(Element.ALIGN_CENTER);
-        tagline.setSpacingAfter(10f);
+        tagline.setSpacingAfter(6f);
         document.add(tagline);
 
         document.add(horizontalRule(1.2f));
@@ -91,15 +91,15 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
     private void addReceiptTitleAndVehicleInfo(Document document, DailyRoutePaymentReceipt receipt) throws Exception {
         Paragraph receiptTitle = new Paragraph("VEHICLE PAYMENT RECEIPT", RECEIPT_TITLE_FONT);
         receiptTitle.setAlignment(Element.ALIGN_CENTER);
-        receiptTitle.setSpacingBefore(10f);
-        receiptTitle.setSpacingAfter(12f);
+        receiptTitle.setSpacingBefore(4f);
+        receiptTitle.setSpacingAfter(6f);
         document.add(receiptTitle);
 
         PdfPTable table = new PdfPTable(2);
         table.setWidthPercentage(60);
         table.setHorizontalAlignment(Element.ALIGN_LEFT);
         table.setWidths(new float[]{35, 65});
-        table.setSpacingAfter(10f);
+        table.setSpacingAfter(6f);
 
         addHeaderRow(table, "Vehicle Number", receipt.getVehicleNumber(), VEHICLE_NUMBER_FONT);
         addHeaderRow(table, "Vehicle Capacity",
@@ -117,12 +117,12 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
     private void addHeaderRow(PdfPTable table, String label, String value, Font valueFont) {
         PdfPCell labelCell = new PdfPCell(new Phrase(label, HEADER_LABEL_FONT));
         labelCell.setBorder(PdfPCell.NO_BORDER);
-        labelCell.setPaddingBottom(4f);
+        labelCell.setPaddingBottom(3f);
         table.addCell(labelCell);
 
         PdfPCell valueCell = new PdfPCell(new Phrase(value, valueFont));
         valueCell.setBorder(PdfPCell.NO_BORDER);
-        valueCell.setPaddingBottom(4f);
+        valueCell.setPaddingBottom(3f);
         table.addCell(valueCell);
     }
 
@@ -134,7 +134,7 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
         cell.setBorderWidth(thickness);
         cell.setFixedHeight(2f);
         rule.addCell(cell);
-        rule.setSpacingAfter(12f);
+        rule.setSpacingAfter(6f);
         return rule;
     }
 
@@ -146,13 +146,13 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
         table.setWidthPercentage(100);
         table.setWidths(new float[]{12, 16, 10, 10, 16, 18, 18});
         table.setHeaderRows(1); // repeats the header row across page breaks
-        table.setSpacingAfter(14f);
+        table.setSpacingAfter(8f);
 
         for (String h : headers) {
             PdfPCell cell = new PdfPCell(new Phrase(h, TABLE_HEADER_FONT));
             cell.setBackgroundColor(HEADER_BG);
             cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            cell.setPadding(6f);
+            cell.setPadding(4.5f);
             table.addCell(cell);
         }
 
@@ -200,8 +200,8 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
 
     private Paragraph sectionHeading(String text) {
         Paragraph heading = new Paragraph(text, SECTION_HEADING_FONT);
-        heading.setSpacingBefore(4f);
-        heading.setSpacingAfter(8f);
+        heading.setSpacingBefore(3f);
+        heading.setSpacingAfter(5f);
         return heading;
     }
 
@@ -212,7 +212,7 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
         PdfPCell labelCell = new PdfPCell(new Phrase(label, labelFont));
         labelCell.setBorder(PdfPCell.BOX);
         labelCell.setHorizontalAlignment(Element.ALIGN_LEFT);
-        labelCell.setPadding(7f);
+        labelCell.setPadding(4.5f);
         if (highlight) {
             labelCell.setBackgroundColor(HIGHLIGHT_BG);
         }
@@ -221,7 +221,7 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
         PdfPCell valueCell = new PdfPCell(new Phrase(value, valueFont));
         valueCell.setBorder(PdfPCell.BOX);
         valueCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        valueCell.setPadding(7f);
+        valueCell.setPadding(4.5f);
         if (highlight) {
             valueCell.setBackgroundColor(HIGHLIGHT_BG);
         }
@@ -231,14 +231,14 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
     private void addCell(PdfPTable table, String text, int alignment, Font font) {
         PdfPCell cell = new PdfPCell(new Phrase(text, font));
         cell.setHorizontalAlignment(alignment);
-        cell.setPadding(5f);
+        cell.setPadding(4f);
         table.addCell(cell);
     }
 
     private void addSignatureFooter(Document document) throws Exception {
         PdfPTable footer = new PdfPTable(3);
         footer.setWidthPercentage(100);
-        footer.setSpacingBefore(40f);
+        footer.setSpacingBefore(18f);
         footer.setWidths(new float[]{1, 1, 1});
 
         String[] labels = {"Prepared By", "Checked By", "Authorized Signature"};
