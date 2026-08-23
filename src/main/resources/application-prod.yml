@@ -1,11 +1,48 @@
 spring:
+  application:
+    name: materialGrid
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/material_grid?useSSL=false&serverTimezone=Asia/Colombo
+    username: root
+    password: 1234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
   jpa:
-    show-sql: false
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+
+server:
+  port: 8080
+
+app:
+  security:
+    session-token-header: Authorization
+    session-token-prefix: "Bearer "
+    session-idle-timeout-minutes: 30
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
 logging:
   level:
-    root: WARN
-    com.pixelMind.materialGrid: INFO
-server:
-  error:
-    include-stacktrace: never
-    include-message: never
+    root: INFO
+    com.example.materialGrid: INFO
