@@ -75,6 +75,6 @@ public class VehicleLicenseController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         vehicleLicenseService.deleteVehicleLicense(id);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        return ResponseEntity.ok(ApiResponse.success("Vehicle licence deleted successfully", null));
     }
 }

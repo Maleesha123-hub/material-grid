@@ -76,8 +76,8 @@ public class DailyRouteController {
 
     @Operation(summary = "Delete (soft-delete) a daily route")
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<String>> delete(@PathVariable Long id) {
         dailyRouteService.deleteDailyRoute(id);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        return ResponseEntity.ok(ApiResponse.success("Daily route deleted successfully", null));
     }
 }
