@@ -31,6 +31,7 @@ public class DailyRouteMapper {
                         .build())
                 .amount(dailyRoute.getAmount())
                 .checkBy(dailyRoute.getCheckBy())
+                .bilNumber(dailyRoute.getBillNumber())
                 .createdBy(dailyRoute.getCreatedBy())
                 .createdDate(dailyRoute.getCreatedDate())
                 .modifiedBy(dailyRoute.getModifiedBy())

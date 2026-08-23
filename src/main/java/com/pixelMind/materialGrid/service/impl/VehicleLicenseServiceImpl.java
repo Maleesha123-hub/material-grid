@@ -83,7 +83,7 @@ public class VehicleLicenseServiceImpl implements VehicleLicenseService {
     @Transactional(readOnly = true)
     public Page<VehicleLicenseResponse> getVehicleLicenses(VehicleLicenseStatus status, Pageable pageable) {
         if (status != null) {
-            return vehicleLicenseRepository.findByStatus(status, pageable).map(vehicleLicenseMapper::toResponse);
+            return vehicleLicenseRepository.findByStatusAndDeletedFalse(status, pageable).map(vehicleLicenseMapper::toResponse);
         }
         return vehicleLicenseRepository.findAll(pageable).map(vehicleLicenseMapper::toResponse);
     }
@@ -91,13 +91,13 @@ public class VehicleLicenseServiceImpl implements VehicleLicenseService {
     @Override
     @Transactional(readOnly = true)
     public Page<VehicleLicenseResponse> getByVehicle(Long vehicleId, Pageable pageable) {
-        return vehicleLicenseRepository.findByVehicleId(vehicleId, pageable).map(vehicleLicenseMapper::toResponse);
+        return vehicleLicenseRepository.findByVehicleIdAndDeletedFalse(vehicleId, pageable).map(vehicleLicenseMapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<VehicleLicenseResponse> getByLicense(Long licenseId, Pageable pageable) {
-        return vehicleLicenseRepository.findByLicenseId(licenseId, pageable).map(vehicleLicenseMapper::toResponse);
+        return vehicleLicenseRepository.findByLicenseIdAndDeletedFalse(licenseId, pageable).map(vehicleLicenseMapper::toResponse);
     }
 
     @Override

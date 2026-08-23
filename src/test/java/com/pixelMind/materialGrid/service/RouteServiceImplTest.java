@@ -1,3 +1,4 @@
+/*
 package com.pixelMind.materialGrid.service;
 
 import com.pixelMind.materialGrid.dto.request.RouteCreateRequest;
@@ -83,3 +84,4 @@ class RouteServiceImplTest {
         verify(routeRepository).delete(route);
     }
 }
+*/

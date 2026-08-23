@@ -22,7 +22,6 @@ public class LicenseMapper {
                 .createdDate(license.getCreatedDate())
                 .modifiedBy(license.getModifiedBy())
                 .modifiedDate(license.getModifiedDate())
-                .status(license.getActive() ? StatusConstants.ACTIVE : StatusConstants.INACTIVE)
                 .build();
     }
 }

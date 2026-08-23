@@ -15,8 +15,8 @@ public class PriceRateMapper {
                 .id(priceRate.getId())
                 .price(priceRate.getPrice())
                 .status(priceRate.getStatus())
-                .addedBy(priceRate.getAddedBy())
-                .addedDate(priceRate.getAddedDate())
+                .createdBy(priceRate.getCreatedBy())
+                .createdDate(priceRate.getCreatedDate())
                 .modifiedBy(priceRate.getModifiedBy())
                 .modifiedDate(priceRate.getModifiedDate())
                 .build();

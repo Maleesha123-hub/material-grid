@@ -5,21 +5,24 @@ import com.pixelMind.materialGrid.constant.ReportConstants;
 import java.time.LocalDate;
 
 /**
- * Builds and sanitizes the downloadable PDF filename - vehicle numbers are
- * already constrained to [A-Z0-9-] at creation time (see Vehicle module),
- * but this sanitizes defensively regardless, since a filename derived from
- * data should never trust that upstream validation was never bypassed or
- * changed later.
+ * MODIFIED: buildFileName now takes a date RANGE instead of a single date,
+ * matching the report's new startDate/endDate parameters. Filename dates
+ * use ISO (LocalDate.toString(), e.g. "2026-08-01") rather than the PDF's
+ * on-page dd/MM/yyyy display format - filenames should stay
+ * machine-sortable/parseable, which dd/MM/yyyy is not (see spec section 28:
+ * ISO for API/machine contexts, dd/MM/yyyy only for human-facing PDF
+ * display).
  */
 public final class PdfFileNameUtil {
 
     private PdfFileNameUtil() {
     }
 
-    public static String buildFileName(String vehicleNumber, LocalDate date) {
+    public static String buildFileName(String vehicleNumber, LocalDate startDate, LocalDate endDate) {
         String safeVehicleNumber = vehicleNumber == null
                 ? "unknown"
                 : vehicleNumber.replaceAll("[^A-Za-z0-9-]", "");
-        return ReportConstants.PDF_FILENAME_PREFIX + "-" + safeVehicleNumber + "-" + date + ".pdf";
+        return ReportConstants.PDF_FILENAME_PREFIX + "-" + safeVehicleNumber
+                + "-" + startDate + "-to-" + endDate + ".pdf";
     }
 }

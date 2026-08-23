@@ -1,6 +1,5 @@
 package com.pixelMind.materialGrid.service.impl;
 
-import com.lowagie.text.Chunk;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
@@ -10,10 +9,11 @@ import com.lowagie.text.Phrase;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
-import com.pixelMind.materialGrid.constant.ReportConstants;
-import com.pixelMind.materialGrid.dto.response.DailyRouteReportResponse;
-import com.pixelMind.materialGrid.exception.BusinessException;
 import com.pixelMind.materialGrid.constant.ErrorCodeConstants;
+import com.pixelMind.materialGrid.constant.ReportConstants;
+import com.pixelMind.materialGrid.dto.response.DailyRoutePaymentReceipt;
+import com.pixelMind.materialGrid.dto.response.DailyRoutePaymentReceiptRow;
+import com.pixelMind.materialGrid.exception.BusinessException;
 import com.pixelMind.materialGrid.service.DailyRoutePdfService;
 import com.pixelMind.materialGrid.util.DateTimeUtil;
 import com.pixelMind.materialGrid.util.MoneyFormatUtil;
@@ -24,10 +24,13 @@ import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 
 /**
- * Renders a single Daily Route report row using the same header branding /
- * table-grid / summary-block / signature-footer layout shown in the
- * provided sample. Landscape A4 is used because the 8-column financial
- * table (matching the sample's column set) is comfortably wider than tall.
+ * MODIFIED: Daily Route Details table gains "Route Code" and "KM" columns
+ * (Date | Route Code | KM | Load Count | Price Rate | Total Amount | Paid
+ * Amount), and Financial Summary gains a "Total KM" line alongside "Total
+ * Load Count". Route Code is a comma-joined list of distinct routes run
+ * that day - a date can legitimately span multiple routes, so it's shown
+ * as a list rather than forced into one value (unlike Price Rate, which
+ * IS validated as single-valued per date - see the service layer).
  */
 @Slf4j
 @Service
@@ -35,37 +38,44 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
 
     private static final Font TITLE_FONT = new Font(Font.HELVETICA, 20, Font.BOLD);
     private static final Font TAGLINE_FONT = new Font(Font.HELVETICA, 11, Font.NORMAL);
-    private static final Font LABEL_FONT = new Font(Font.HELVETICA, 10, Font.BOLD);
-    private static final Font VALUE_FONT = new Font(Font.HELVETICA, 10, Font.NORMAL);
+    private static final Font RECEIPT_TITLE_FONT = new Font(Font.HELVETICA, 15, Font.BOLD);
+    private static final Font SECTION_HEADING_FONT = new Font(Font.HELVETICA, 12, Font.BOLD);
+    private static final Font HEADER_LABEL_FONT = new Font(Font.HELVETICA, 10, Font.BOLD);
+    private static final Font HEADER_VALUE_FONT = new Font(Font.HELVETICA, 10, Font.NORMAL);
+    private static final Font VEHICLE_NUMBER_FONT = new Font(Font.HELVETICA, 13, Font.BOLD);
+    private static final Font SUMMARY_LABEL_FONT = new Font(Font.HELVETICA, 10, Font.BOLD);
+    private static final Font SUMMARY_VALUE_FONT = new Font(Font.HELVETICA, 10, Font.NORMAL);
+    private static final Font SUMMARY_HIGHLIGHT_FONT = new Font(Font.HELVETICA, 11, Font.BOLD);
     private static final Font TABLE_HEADER_FONT = new Font(Font.HELVETICA, 9, Font.BOLD, Color.WHITE);
     private static final Font TABLE_CELL_FONT = new Font(Font.HELVETICA, 9, Font.NORMAL);
     private static final Font TOTAL_ROW_FONT = new Font(Font.HELVETICA, 9, Font.BOLD);
     private static final Color HEADER_BG = new Color(64, 64, 64);
+    private static final Color HIGHLIGHT_BG = new Color(230, 230, 230);
 
     @Override
-    public byte[] generatePdf(DailyRouteReportResponse report) {
+    public byte[] generatePdf(DailyRoutePaymentReceipt receipt) {
         Document document = new Document(PageSize.A4.rotate(), 30, 30, 30, 30);
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             PdfWriter.getInstance(document, out);
             document.open();
 
-            addHeader(document);
-            addDateLine(document, report);
-            addTable(document, report);
-            addSummary(document, report);
+            addBrandHeader(document);
+            addReceiptTitleAndVehicleInfo(document, receipt);
+            addDailyRouteDetails(document, receipt);
+            addFinancialSummary(document, receipt);
             addSignatureFooter(document);
 
             document.close();
             return out.toByteArray();
         } catch (Exception e) {
-            log.error("Failed to generate daily route report PDF", e);
-            throw new BusinessException("Failed to generate the daily route report PDF",
+            log.error("Failed to generate vehicle payment receipt PDF", e);
+            throw new BusinessException("Failed to generate the vehicle payment receipt PDF",
                     ErrorCodeConstants.INTERNAL_ERROR);
         }
     }
 
-    private void addHeader(Document document) throws Exception {
+    private void addBrandHeader(Document document) throws Exception {
         Paragraph title = new Paragraph(ReportConstants.COMPANY_NAME, TITLE_FONT);
         title.setAlignment(Element.ALIGN_CENTER);
         document.add(title);
@@ -75,34 +85,68 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
         tagline.setSpacingAfter(10f);
         document.add(tagline);
 
+        document.add(horizontalRule(1.2f));
+    }
+
+    private void addReceiptTitleAndVehicleInfo(Document document, DailyRoutePaymentReceipt receipt) throws Exception {
+        Paragraph receiptTitle = new Paragraph("VEHICLE PAYMENT RECEIPT", RECEIPT_TITLE_FONT);
+        receiptTitle.setAlignment(Element.ALIGN_CENTER);
+        receiptTitle.setSpacingBefore(10f);
+        receiptTitle.setSpacingAfter(12f);
+        document.add(receiptTitle);
+
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(60);
+        table.setHorizontalAlignment(Element.ALIGN_LEFT);
+        table.setWidths(new float[]{35, 65});
+        table.setSpacingAfter(10f);
+
+        addHeaderRow(table, "Vehicle Number", receipt.getVehicleNumber(), VEHICLE_NUMBER_FONT);
+        addHeaderRow(table, "Vehicle Capacity",
+                receipt.getVehicleCapacity() != null ? receipt.getVehicleCapacity().toPlainString() : "-",
+                HEADER_VALUE_FONT);
+        addHeaderRow(table, "Period",
+                DateTimeUtil.formatReportDate(receipt.getStartDate()) + " - "
+                        + DateTimeUtil.formatReportDate(receipt.getEndDate()),
+                HEADER_VALUE_FONT);
+        document.add(table);
+
+        document.add(horizontalRule(0.8f));
+    }
+
+    private void addHeaderRow(PdfPTable table, String label, String value, Font valueFont) {
+        PdfPCell labelCell = new PdfPCell(new Phrase(label, HEADER_LABEL_FONT));
+        labelCell.setBorder(PdfPCell.NO_BORDER);
+        labelCell.setPaddingBottom(4f);
+        table.addCell(labelCell);
+
+        PdfPCell valueCell = new PdfPCell(new Phrase(value, valueFont));
+        valueCell.setBorder(PdfPCell.NO_BORDER);
+        valueCell.setPaddingBottom(4f);
+        table.addCell(valueCell);
+    }
+
+    private PdfPTable horizontalRule(float thickness) throws Exception {
         PdfPTable rule = new PdfPTable(1);
         rule.setWidthPercentage(100);
-        PdfPCell ruleCell = new PdfPCell();
-        ruleCell.setBorder(PdfPCell.BOTTOM);
-        ruleCell.setBorderWidth(1.2f);
-        ruleCell.setFixedHeight(2f);
-        rule.addCell(ruleCell);
-        document.add(rule);
+        PdfPCell cell = new PdfPCell();
+        cell.setBorder(PdfPCell.BOTTOM);
+        cell.setBorderWidth(thickness);
+        cell.setFixedHeight(2f);
+        rule.addCell(cell);
+        rule.setSpacingAfter(12f);
+        return rule;
     }
 
-    private void addDateLine(Document document, DailyRouteReportResponse report) throws Exception {
-        Paragraph spacer = new Paragraph(" ");
-        spacer.setSpacingAfter(4f);
-        document.add(spacer);
+    private void addDailyRouteDetails(Document document, DailyRoutePaymentReceipt receipt) throws Exception {
+        document.add(sectionHeading("Daily Route Details"));
 
-        Paragraph datePara = new Paragraph();
-        datePara.add(new Chunk("Date: ", LABEL_FONT));
-        datePara.add(new Chunk(DateTimeUtil.formatReportDate(report.getDate()), VALUE_FONT));
-        datePara.setSpacingAfter(14f);
-        document.add(datePara);
-    }
-
-    private void addTable(Document document, DailyRouteReportResponse report) throws Exception {
-        String[] headers = {"No.", "Lorry No.", "Cube", "Load Count", "Total Amount (Rs.)",
-                "Paid Amount (Rs.)", "License Fee (Rs.)", "Balance (Rs.)"};
+        String[] headers = {"Date", "Route Code", "KM", "Load Count", "Price Rate (Rs.)", "Total Amount (Rs.)", "Paid Amount (Rs.)"};
         PdfPTable table = new PdfPTable(headers.length);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{6, 16, 10, 10, 16, 16, 13, 13});
+        table.setWidths(new float[]{12, 16, 10, 10, 16, 18, 18});
+        table.setHeaderRows(1); // repeats the header row across page breaks
+        table.setSpacingAfter(14f);
 
         for (String h : headers) {
             PdfPCell cell = new PdfPCell(new Phrase(h, TABLE_HEADER_FONT));
@@ -112,36 +156,76 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
             table.addCell(cell);
         }
 
-        addRow(table, "01", report.getVehicleNumber(),
-                report.getVehicleCapacity() != null ? report.getVehicleCapacity().toPlainString() : "-",
-                String.valueOf(report.getLoadCount()),
-                MoneyFormatUtil.format(report.getTotalAmount()),
-                MoneyFormatUtil.format(report.getPaidAmount()),
-                MoneyFormatUtil.format(report.getLicenceFee()),
-                MoneyFormatUtil.format(report.getBalance()), TABLE_CELL_FONT);
+        for (DailyRoutePaymentReceiptRow row : receipt.getRows()) {
+            addCell(table, DateTimeUtil.formatReportDate(row.getDate()), Element.ALIGN_CENTER, TABLE_CELL_FONT);
+            addCell(table, row.getRouteCode(), Element.ALIGN_LEFT, TABLE_CELL_FONT);
+            addCell(table, MoneyFormatUtil.format(row.getTotalKm()), Element.ALIGN_RIGHT, TABLE_CELL_FONT);
+            addCell(table, String.valueOf(row.getLoadCount()), Element.ALIGN_RIGHT, TABLE_CELL_FONT);
+            addCell(table, MoneyFormatUtil.format(row.getPriceRate()), Element.ALIGN_RIGHT, TABLE_CELL_FONT);
+            addCell(table, MoneyFormatUtil.format(row.getTotalAmount()), Element.ALIGN_RIGHT, TABLE_CELL_FONT);
+            addCell(table, MoneyFormatUtil.format(row.getPaidAmount()), Element.ALIGN_RIGHT, TABLE_CELL_FONT);
+        }
 
-        // A single-row TOTAL, matching the sample's layout, is trivially
-        // identical to the one data row above - included for visual
-        // consistency with the multi-vehicle template this format is based on.
-        addRow(table, "", "TOTAL", "", "",
-                MoneyFormatUtil.format(report.getTotalAmount()),
-                MoneyFormatUtil.format(report.getPaidAmount()),
-                MoneyFormatUtil.format(report.getLicenceFee()),
-                MoneyFormatUtil.format(report.getBalance()), TOTAL_ROW_FONT);
+        addCell(table, "TOTAL", Element.ALIGN_CENTER, TOTAL_ROW_FONT);
+        addCell(table, "-", Element.ALIGN_LEFT, TOTAL_ROW_FONT);
+        addCell(table, "-", Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
+        addCell(table, String.valueOf(receipt.getTotalLoadCount()), Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
+        addCell(table, "-", Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
+        addCell(table, MoneyFormatUtil.format(receipt.getTotalAmount()), Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
+        addCell(table, MoneyFormatUtil.format(receipt.getTotalPaidAmount()), Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
 
         document.add(table);
     }
 
-    private void addRow(PdfPTable table, String no, String lorryNo, String cube, String loadCount,
-                        String totalAmount, String paidAmount, String licenceFee, String balance, Font font) {
-        addCell(table, no, Element.ALIGN_CENTER, font);
-        addCell(table, lorryNo, Element.ALIGN_LEFT, font);
-        addCell(table, cube, Element.ALIGN_CENTER, font);
-        addCell(table, loadCount, Element.ALIGN_CENTER, font);
-        addCell(table, totalAmount, Element.ALIGN_RIGHT, font);
-        addCell(table, paidAmount, Element.ALIGN_RIGHT, font);
-        addCell(table, licenceFee, Element.ALIGN_RIGHT, font);
-        addCell(table, balance, Element.ALIGN_RIGHT, font);
+    private void addFinancialSummary(Document document, DailyRoutePaymentReceipt receipt) throws Exception {
+        document.add(sectionHeading("Financial Summary"));
+
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(60);
+        table.setHorizontalAlignment(Element.ALIGN_LEFT);
+        table.setWidths(new float[]{45, 55});
+
+        addSummaryRow(table, "Total Load Count", String.valueOf(receipt.getTotalLoadCount()), false);
+        //addSummaryRow(table, "Total KM", MoneyFormatUtil.format(receipt.getTotalKm()), false);
+        addSummaryRow(table, "Price Rate",
+                receipt.isPriceRateVaries() ? "Varies across period" : MoneyFormatUtil.format(receipt.getPriceRate()),
+                false);
+        addSummaryRow(table, "Total Amount", ReportConstants.CURRENCY_PREFIX + MoneyFormatUtil.format(receipt.getTotalAmount()), false);
+        addSummaryRow(table, "Total Paid Amount", ReportConstants.CURRENCY_PREFIX + MoneyFormatUtil.format(receipt.getTotalPaidAmount()), false);
+        addSummaryRow(table, "Licence Fee", ReportConstants.CURRENCY_PREFIX + MoneyFormatUtil.format(receipt.getLicenceFee()), false);
+        addSummaryRow(table, "Balance", ReportConstants.CURRENCY_PREFIX + MoneyFormatUtil.format(receipt.getBalance()), true);
+
+        document.add(table);
+    }
+
+    private Paragraph sectionHeading(String text) {
+        Paragraph heading = new Paragraph(text, SECTION_HEADING_FONT);
+        heading.setSpacingBefore(4f);
+        heading.setSpacingAfter(8f);
+        return heading;
+    }
+
+    private void addSummaryRow(PdfPTable table, String label, String value, boolean highlight) {
+        Font labelFont = highlight ? SUMMARY_HIGHLIGHT_FONT : SUMMARY_LABEL_FONT;
+        Font valueFont = highlight ? SUMMARY_HIGHLIGHT_FONT : SUMMARY_VALUE_FONT;
+
+        PdfPCell labelCell = new PdfPCell(new Phrase(label, labelFont));
+        labelCell.setBorder(PdfPCell.BOX);
+        labelCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+        labelCell.setPadding(7f);
+        if (highlight) {
+            labelCell.setBackgroundColor(HIGHLIGHT_BG);
+        }
+        table.addCell(labelCell);
+
+        PdfPCell valueCell = new PdfPCell(new Phrase(value, valueFont));
+        valueCell.setBorder(PdfPCell.BOX);
+        valueCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        valueCell.setPadding(7f);
+        if (highlight) {
+            valueCell.setBackgroundColor(HIGHLIGHT_BG);
+        }
+        table.addCell(valueCell);
     }
 
     private void addCell(PdfPTable table, String text, int alignment, Font font) {
@@ -149,29 +233,6 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
         cell.setHorizontalAlignment(alignment);
         cell.setPadding(5f);
         table.addCell(cell);
-    }
-
-    private void addSummary(Document document, DailyRouteReportResponse report) throws Exception {
-        Paragraph spacer = new Paragraph(" ");
-        spacer.setSpacingBefore(14f);
-        document.add(spacer);
-
-        Paragraph heading = new Paragraph("Payment Summary", LABEL_FONT);
-        heading.setSpacingAfter(6f);
-        document.add(heading);
-
-        addSummaryLine(document, "Total Amount", report.getTotalAmount());
-        addSummaryLine(document, "Total Paid Amount", report.getPaidAmount());
-        addSummaryLine(document, "Total License Fee", report.getLicenceFee());
-        addSummaryLine(document, "Total Balance", report.getBalance());
-    }
-
-    private void addSummaryLine(Document document, String label, java.math.BigDecimal value) throws Exception {
-        Paragraph line = new Paragraph();
-        line.add(new Chunk(label + ": ", LABEL_FONT));
-        line.add(new Chunk(ReportConstants.CURRENCY_PREFIX + MoneyFormatUtil.format(value), VALUE_FONT));
-        line.setSpacingAfter(3f);
-        document.add(line);
     }
 
     private void addSignatureFooter(Document document) throws Exception {
@@ -187,7 +248,7 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
             cell.setBorderWidth(0.8f);
             cell.setPaddingTop(4f);
             cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            cell.addElement(new Phrase(label, VALUE_FONT));
+            cell.addElement(new Phrase(label, SUMMARY_VALUE_FONT));
             footer.addCell(cell);
         }
         document.add(footer);

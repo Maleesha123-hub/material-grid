@@ -3,6 +3,7 @@ package com.pixelMind.materialGrid.entity;
 import com.pixelMind.materialGrid.entity.enums.PriceRateStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -13,8 +14,9 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class PriceRate {
+@SuperBuilder
+@EqualsAndHashCode(callSuper = false)
+public class PriceRate extends BaseAuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,34 +29,4 @@ public class PriceRate {
     @Column(name = "status", nullable = false, length = 20)
     private PriceRateStatus status;
 
-    @Column(name = "added_by", nullable = false, length = 50)
-    private String addedBy;
-
-    @Column(name = "added_date", nullable = false, updatable = false)
-    private LocalDateTime addedDate;
-
-    @Column(name = "modified_by", length = 50)
-    private String modifiedBy;
-
-    @Column(name = "modified_date", nullable = false)
-    private LocalDateTime modifiedDate;
-
-    @Version
-    @Column(name = "version", nullable = false)
-    private Long version;
-
-    @PrePersist
-    protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        this.addedDate = now;
-        this.modifiedDate = now;
-        if (this.status == null) {
-            this.status = PriceRateStatus.INACTIVE;
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.modifiedDate = LocalDateTime.now();
-    }
 }

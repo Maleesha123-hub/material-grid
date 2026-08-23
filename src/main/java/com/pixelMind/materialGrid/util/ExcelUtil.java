@@ -23,13 +23,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-/**
- * Low-level, feature-agnostic Apache POI helpers shared by every Excel
- * import service. Domain-specific meaning (which headers are required, what
- * counts as an invalid row) stays out of this class deliberately, so it can
- * be reused without coupling Vehicle Expense and Daily Route imports
- * together.
- */
 public final class ExcelUtil {
 
     private ExcelUtil() {
@@ -48,6 +41,31 @@ public final class ExcelUtil {
         } catch (IOException | RuntimeException e) {
             throw structuralError("The uploaded file could not be opened as a valid Excel workbook.");
         }
+    }
+
+    /**
+     * NEW: extracts just the filename portion of the uploaded file, used as
+     * the File History business key. Deliberately strips any path
+     * component a browser/client might include (older IE historically sent
+     * a full path; nothing should be trusted blindly regardless) rather
+     * than using the temporary storage path Spring assigns internally - see
+     * the File History feature's "Filename Handling" requirements. Also
+     * rejects a null/blank name outright, since a blank filename can never
+     * be a meaningful File History business key.
+     */
+    public static String extractSafeFileName(MultipartFile file) {
+        String original = file != null ? file.getOriginalFilename() : null;
+        if (original == null || original.isBlank()) {
+            throw structuralError("The uploaded file has no filename.");
+        }
+        String withoutPath = original.replace('\\', '/');
+        int lastSlash = withoutPath.lastIndexOf('/');
+        String baseName = lastSlash >= 0 ? withoutPath.substring(lastSlash + 1) : withoutPath;
+        baseName = baseName.trim();
+        if (baseName.isBlank() || baseName.equals(".") || baseName.equals("..")) {
+            throw structuralError("The uploaded file has an invalid filename.");
+        }
+        return baseName;
     }
 
     public static Sheet firstSheet(Workbook workbook) {
@@ -160,6 +178,28 @@ public final class ExcelUtil {
                 return Optional.empty();
             }
             return Optional.of(new BigDecimal(raw));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    public static Optional<Integer> readInteger(Row row, int colIndex) {
+        if (row == null) {
+            return Optional.empty();
+        }
+        Cell cell = row.getCell(colIndex);
+        if (cell == null || cell.getCellType() == CellType.BLANK) {
+            return Optional.empty();
+        }
+        try {
+            if (cell.getCellType() == CellType.NUMERIC) {
+                return Optional.of((int) cell.getNumericCellValue());
+            }
+            String raw = readString(row, colIndex);
+            if (raw.isBlank()) {
+                return Optional.empty();
+            }
+            return Optional.of(Integer.valueOf(raw));
         } catch (Exception e) {
             return Optional.empty();
         }

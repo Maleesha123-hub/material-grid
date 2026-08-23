@@ -26,11 +26,14 @@ public final class ErrorCodeConstants {
     public static final String DAILY_ROUTE_NOT_FOUND = "DAILY_ROUTE_NOT_FOUND";
 
     public static final String ACTIVE_PRICE_RATE_NOT_FOUND = "ACTIVE_PRICE_RATE_NOT_FOUND";
-
-    // New for the Daily Route PDF report: covers duplicate DailyRoute rows,
-    // duplicate VehicleLicense rows, and an ACTIVE VehicleLicense pointing
-    // at a nonexistent License - cases that should be impossible under the
-    // business rules and therefore deserve a distinct code from ordinary
-    // validation/not-found errors.
     public static final String DATA_INTEGRITY_ERROR = "DATA_INTEGRITY_ERROR";
+
+    public static final String DUPLICATE_FILE_UPLOAD = "DUPLICATE_FILE_UPLOAD";
+    public static final String FILE_HISTORY_NOT_FOUND = "FILE_HISTORY_NOT_FOUND";
+
+    // New for the Vehicle Payment Receipt: a single date within the report
+    // range has DailyRoute records referencing genuinely different price
+    // rate VALUES - see DailyRouteReportServiceImpl for why this can't be
+    // silently resolved by picking one.
+    public static final String AMBIGUOUS_PRICE_RATE = "AMBIGUOUS_PRICE_RATE";
 }

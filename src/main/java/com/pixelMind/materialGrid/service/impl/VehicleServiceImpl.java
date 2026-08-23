@@ -61,7 +61,7 @@ public class VehicleServiceImpl implements VehicleService {
 
         String vehicleNumber = request.getVehicleNumber().toUpperCase();
 
-        if (vehicleRepository.existsByVehicleNumber(vehicleNumber)) {
+        if (vehicleRepository.existsByVehicleNumberAndDeletedFalse(vehicleNumber)) {
             throw new DuplicateResourceException(
                     "Vehicle number already exists: " + vehicleNumber,
                     ErrorCodeConstants.DUPLICATE_VEHICLE_NUMBER);
@@ -73,7 +73,6 @@ public class VehicleServiceImpl implements VehicleService {
                 .capacity(request.getCapacity())
                 .createdBy(actor)
                 .modifiedBy(actor)
-                .active(true)
                 .build();
 
         // Application-level check above is the fast, friendly-error path;
@@ -95,7 +94,7 @@ public class VehicleServiceImpl implements VehicleService {
     @Transactional(readOnly = true)
     public Page<VehicleResponse> getVehicles(String search, Pageable pageable) {
         if (StringUtils.hasText(search)) {
-            return vehicleRepository.findByVehicleNumberContainingIgnoreCase(search, pageable)
+            return vehicleRepository.findByVehicleNumberContainingIgnoreCaseAndDeletedFalse(search, pageable)
                     .map(vehicleMapper::toResponse);
         }
         return vehicleRepository.findAll(pageable).map(vehicleMapper::toResponse);
@@ -106,7 +105,6 @@ public class VehicleServiceImpl implements VehicleService {
     public VehicleResponse updateVehicle(Long id, VehicleUpdateRequest request) {
         Vehicle vehicle = findOrThrow(id);
         vehicle.setVehicleNumber(request.getVehicleNumber());
-        vehicle.setActive(request.getStatus());
         vehicle.setCapacity(request.getCapacity());
         vehicle.setModifiedBy(SecurityUtil.getCurrentUsername());
 
@@ -120,9 +118,9 @@ public class VehicleServiceImpl implements VehicleService {
     public void deleteVehicle(Long id) {
         Vehicle vehicle = findOrThrow(id);
 
-        if (vehicleExpenseRepository.existsByVehicleId(id)
-                || vehicleLicenseRepository.existsByVehicleId(id)
-                || dailyRouteRepository.existsByVehicleId(id)) {
+        if (vehicleExpenseRepository.existsByVehicleIdAndDeletedFalse(id)
+                || vehicleLicenseRepository.existsByVehicleIdAndDeletedFalse(id)
+                || dailyRouteRepository.existsByVehicleIdAndDeletedFalse(id)) {
             throw new BusinessException(
                     "Cannot delete vehicle with existing expense, license, or daily route records. "
                             + "These are historical records and this vehicle must be preserved for referential integrity.",
@@ -225,7 +223,7 @@ public class VehicleServiceImpl implements VehicleService {
                     .collect(Collectors.toSet());
 
             if (!distinctVehicleNumbers.isEmpty()) {
-                List<Vehicle> existingVehicles = vehicleRepository.findByVehicleNumberIn(distinctVehicleNumbers);
+                List<Vehicle> existingVehicles = vehicleRepository.findByVehicleNumberInAndDeletedFalse(distinctVehicleNumbers);
                 Set<String> existingVehicleNumbers = existingVehicles.stream()
                         .map(Vehicle::getVehicleNumber)
                         .collect(Collectors.toSet());
@@ -248,7 +246,6 @@ public class VehicleServiceImpl implements VehicleService {
                 entities.add(Vehicle.builder()
                         .vehicleNumber(r.vehicleNumber())
                         .capacity(r.capacity())
-                        .active(true)
                         .createdBy(actor)
                         .modifiedBy(actor)
                         .build());

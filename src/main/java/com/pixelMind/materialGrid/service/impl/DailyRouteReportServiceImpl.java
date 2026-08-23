@@ -1,16 +1,22 @@
 package com.pixelMind.materialGrid.service.impl;
 
 import com.pixelMind.materialGrid.constant.ErrorCodeConstants;
-import com.pixelMind.materialGrid.dto.response.DailyRouteReportResponse;
+import com.pixelMind.materialGrid.dto.response.DailyRoutePaymentReceipt;
+import com.pixelMind.materialGrid.dto.response.DailyRoutePaymentReceiptRow;
 import com.pixelMind.materialGrid.dto.response.ReceiptSummaryDTO;
 import com.pixelMind.materialGrid.entity.DailyRoute;
 import com.pixelMind.materialGrid.entity.License;
 import com.pixelMind.materialGrid.entity.Vehicle;
+import com.pixelMind.materialGrid.entity.VehicleExpense;
 import com.pixelMind.materialGrid.entity.VehicleLicense;
 import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
 import com.pixelMind.materialGrid.exception.BusinessException;
 import com.pixelMind.materialGrid.exception.ResourceNotFoundException;
-import com.pixelMind.materialGrid.repository.*;
+import com.pixelMind.materialGrid.repository.DailyRouteRepository;
+import com.pixelMind.materialGrid.repository.LicenseRepository;
+import com.pixelMind.materialGrid.repository.VehicleExpenseRepository;
+import com.pixelMind.materialGrid.repository.VehicleLicenseRepository;
+import com.pixelMind.materialGrid.repository.VehicleRepository;
 import com.pixelMind.materialGrid.service.DailyRouteReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,17 +25,27 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
- * MANDATORY rule (see spec sections 13/19/47): the Licence Fee lookup NEVER
- * checks License.startDate/endDate. The applicable License for a given
- * (vehicleId, date) is determined solely by the VehicleLicense row for that
- * exact pair, per its status - not by any date-range search.
- * <p>
- * Every method here is read-only: generating a report must never create,
- * update, or delete any row.
+ * MANDATORY rule (unchanged): the Licence Fee lookup NEVER checks
+ * License.startDate/endDate.
+ *
+ * Multiple DailyRoute records per vehicle+date are expected and are
+ * CONSOLIDATED into one receipt row per date (see buildConsolidatedRows()),
+ * including consolidating their (possibly distinct) routes into one
+ * comma-joined routeCode list and their KM into one summed total - see
+ * DailyRoutePaymentReceiptRow's Javadoc.
+ *
+ * Every method here is read-only.
  */
 @Slf4j
 @Service
@@ -44,136 +60,164 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
 
     @Override
     @Transactional(readOnly = true)
-    public DailyRouteReportResponse generateReport(LocalDate date, Long vehicleId) {
-
-        log.info("DailyRouteReportServiceImpl.generateReport() => accessed");
-
-        if (date == null && vehicleId == null) {
-            return null;
+    public DailyRoutePaymentReceipt generateReport(LocalDate startDate, LocalDate endDate, Long vehicleId) {
+        if (startDate.isAfter(endDate)) {
+            throw new BusinessException(
+                    "Start date cannot be greater than end date.", ErrorCodeConstants.VALIDATION_FAILED);
         }
 
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Vehicle with ID " + vehicleId + " does not exist", ErrorCodeConstants.VEHICLE_NOT_FOUND));
+                .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found.", ErrorCodeConstants.VEHICLE_NOT_FOUND));
 
-        BigDecimal totalAmount = Optional.ofNullable(
-                dailyRouteRepository.sumAmountsByVehicleIdAndDate(vehicleId, date)
-        ).orElse(BigDecimal.ZERO);
+        List<DailyRoute> dailyRoutes = dailyRouteRepository.findByVehicleIdAndDateBetween(vehicleId, startDate, endDate);
+        if (dailyRoutes.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "No daily route data found for the selected vehicle and date range.",
+                    ErrorCodeConstants.DAILY_ROUTE_NOT_FOUND);
+        }
 
-        BigDecimal licenceFee = Optional.ofNullable(
-                vehicleLicenseRepository.sumLicenseAmountByVehicleIdAndDate(vehicleId, date, VehicleLicenseStatus.ACTIVE)
-        ).orElse(BigDecimal.ZERO);
+        Map<LocalDate, BigDecimal> paidAmountByDate = new HashMap<>();
+        BigDecimal totalPaidAmount = BigDecimal.ZERO;
+        for (VehicleExpense expense : vehicleExpenseRepository.findByVehicleIdAndDateBetweenAndDeletedFalse(
+                vehicleId, startDate, endDate)) {
+            paidAmountByDate.merge(expense.getDate(), expense.getExpenses(), BigDecimal::add);
+            totalPaidAmount = totalPaidAmount.add(expense.getExpenses());
+        }
 
-        BigDecimal paidAmount = Optional.ofNullable(
-                vehicleExpenseRepository.sumExpensesByVehicleIdAndDate(vehicleId, date)
-        ).orElse(BigDecimal.ZERO);
+        List<DailyRoutePaymentReceiptRow> rows = buildConsolidatedRows(vehicle, dailyRoutes, paidAmountByDate);
 
-        BigDecimal balance = totalAmount.subtract(paidAmount.add(licenceFee));
+        int totalLoadCount = 0;
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal totalKm = BigDecimal.ZERO;
+        TreeSet<BigDecimal> distinctOverallRates = new TreeSet<>();
+        for (DailyRoutePaymentReceiptRow row : rows) {
+            totalLoadCount += row.getLoadCount();
+            totalAmount = totalAmount.add(row.getTotalAmount());
+            totalKm = totalKm.add(row.getTotalKm());
+            distinctOverallRates.add(row.getPriceRate());
+        }
+        boolean priceRateVaries = distinctOverallRates.size() > 1;
+        BigDecimal overallPriceRate = priceRateVaries ? null : distinctOverallRates.first();
 
-        Integer loadCount = Optional.ofNullable(
-                dailyRouteRepository.loadCountByVehicleIdAndDate(vehicleId, date)
-        ).orElse(0);
+        BigDecimal licenceFee = resolveLicenceFeeForRange(vehicle, startDate, endDate);
+        BigDecimal balance = totalAmount.subtract(totalPaidAmount.add(licenceFee));
 
+        log.info("Vehicle payment receipt generated: vehicleId={}, startDate={}, endDate={}, dateRows={}, "
+                        + "totalLoadCount={}, totalKm={}, totalAmount={}, totalPaidAmount={}, licenceFee={}, balance={}",
+                vehicleId, startDate, endDate, rows.size(), totalLoadCount, totalKm, totalAmount, totalPaidAmount,
+                licenceFee, balance);
 
-        log.info("Daily route report generated: vehicleId={}, date={}, totalAmount={}, paidAmount={}, "
-                        + "licenceFee={}, balance={}",
-                vehicleId, date, totalAmount, paidAmount, licenceFee, balance);
-
-        log.info("DailyRouteReportServiceImpl.generateReport() => ended");
-
-        return DailyRouteReportResponse.builder()
-                .date(date)
+        return DailyRoutePaymentReceipt.builder()
                 .vehicleNumber(vehicle.getVehicleNumber())
                 .vehicleCapacity(vehicle.getCapacity())
-                .totalVolume(vehicle.getCapacity().multiply(BigDecimal.valueOf(loadCount)).doubleValue())
+                .startDate(startDate)
+                .endDate(endDate)
+                .rows(rows)
+                .totalLoadCount(totalLoadCount)
+                .totalKm(totalKm)
+                .priceRate(overallPriceRate)
+                .priceRateVaries(priceRateVaries)
                 .totalAmount(totalAmount)
-                .paidAmount(paidAmount)
+                .totalPaidAmount(totalPaidAmount)
                 .licenceFee(licenceFee)
                 .balance(balance)
-                .loadCount(loadCount)
                 .build();
     }
 
     @Override
     public ReceiptSummaryDTO getSummary(LocalDate date, Long vehicleId) {
-
-        Vehicle vehicle = vehicleRepository.findById(vehicleId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Vehicle with ID " + vehicleId + " does not exist", ErrorCodeConstants.VEHICLE_NOT_FOUND)
-                );
-
-        // Daily routes
-        Integer loadCount = dailyRouteRepository.loadCountByVehicleIdAndDate(
-                vehicleId, date
-        );
-
-        // Daily expenses
-        BigDecimal dailyExpenses = vehicleExpenseRepository.sumExpensesByVehicleIdAndDate(
-                vehicleId, date
-        );
-
-        // License amount
-        BigDecimal licenseAmount = vehicleLicenseRepository.sumLicenseAmountByVehicleIdAndDate(
-                vehicleId, date, VehicleLicenseStatus.ACTIVE
-        );
-
-        // Gross transport rate
-        BigDecimal dailyGrossAmount = dailyRouteRepository.sumAmountsByVehicleIdAndDate(vehicleId, date);
-
-        return ReceiptSummaryDTO.builder()
-                .totalDispatches(loadCount)
-                .totalVolumes(vehicle.getCapacity().multiply(new BigDecimal(loadCount)).doubleValue())
-                .dailyGrossTransportRate(dailyGrossAmount)
-                .dailyDeduction(dailyExpenses.add(licenseAmount))
-                .payable(dailyGrossAmount.subtract(dailyExpenses.add(licenseAmount)))
-                .build();
-
+        return null;
     }
 
-    private List<DailyRoute> resolveDailyRoutes(Vehicle vehicle, LocalDate date) {
+    /**
+     * Consolidates raw DailyRoute records into one row per date. Grouping
+     * uses a LinkedHashMap: `dailyRoutes` is already ordered by date
+     * ascending (see the repository query), so first-insertion order into
+     * the map equals ascending date order - no separate sort needed.
+     */
+    private List<DailyRoutePaymentReceiptRow> buildConsolidatedRows(
+            Vehicle vehicle, List<DailyRoute> dailyRoutes, Map<LocalDate, BigDecimal> paidAmountByDate) {
 
-        List<DailyRoute> dailyRoutes = dailyRouteRepository.findByVehicleIdAndDateAndDeletedFalse(vehicle.getId(), date);
-
-        if (dailyRoutes.isEmpty()) {
-            throw new ResourceNotFoundException(
-                    "No daily route found for vehicle " + vehicle.getVehicleNumber() + " on " + date,
-                    ErrorCodeConstants.DAILY_ROUTE_NOT_FOUND);
+        Map<LocalDate, List<DailyRoute>> byDate = new LinkedHashMap<>();
+        for (DailyRoute dailyRoute : dailyRoutes) {
+            byDate.computeIfAbsent(dailyRoute.getDate(), d -> new ArrayList<>()).add(dailyRoute);
         }
 
-        return dailyRoutes;
+        List<DailyRoutePaymentReceiptRow> rows = new ArrayList<>(byDate.size());
+        for (Map.Entry<LocalDate, List<DailyRoute>> entry : byDate.entrySet()) {
+            LocalDate date = entry.getKey();
+            List<DailyRoute> recordsForDate = entry.getValue();
+
+            BigDecimal totalAmountForDate = BigDecimal.ZERO;
+            BigDecimal totalKmForDate = BigDecimal.ZERO;
+            // TreeSet: BigDecimal.equals() is scale-sensitive, compareTo()
+            // is not - this correctly treats equal price VALUES as one
+            // entry regardless of stored scale.
+            TreeSet<BigDecimal> distinctRatesForDate = new TreeSet<>();
+            // LinkedHashSet: dedupes route codes while preserving the order
+            // they were first encountered that day.
+            Set<String> distinctRouteCodesForDate = new LinkedHashSet<>();
+
+            for (DailyRoute dailyRoute : recordsForDate) {
+                totalAmountForDate = totalAmountForDate.add(dailyRoute.getAmount());
+                totalKmForDate = dailyRoute.getRoute().getKm();
+                distinctRatesForDate.add(dailyRoute.getPriceRate().getPrice());
+                distinctRouteCodesForDate.add(dailyRoute.getRoute().getRouteCode());
+            }
+
+            if (distinctRatesForDate.size() > 1) {
+                throw new BusinessException(
+                        "Multiple price rates found for vehicle " + vehicle.getVehicleNumber()
+                                + " on date " + date + "; cannot determine a single price rate for this date.",
+                        ErrorCodeConstants.AMBIGUOUS_PRICE_RATE);
+            }
+
+            rows.add(DailyRoutePaymentReceiptRow.builder()
+                    .date(date)
+                    .routeCode(String.join(", ", distinctRouteCodesForDate))
+                    .totalKm(totalKmForDate)
+                    .loadCount(recordsForDate.size())
+                    .priceRate(distinctRatesForDate.first())
+                    .totalAmount(totalAmountForDate)
+                    .paidAmount(paidAmountByDate.getOrDefault(date, BigDecimal.ZERO))
+                    .build());
+        }
+        return rows;
     }
 
-    private BigDecimal resolveLicenceFee(Vehicle vehicle, LocalDate date) {
-        List<VehicleLicense> vehicleLicenses = vehicleLicenseRepository.findByVehicleIdAndDate(vehicle.getId(), date);
+    /** Unchanged from the previous iteration. */
+    private BigDecimal resolveLicenceFeeForRange(Vehicle vehicle, LocalDate startDate, LocalDate endDate) {
+        List<VehicleLicense> vehicleLicenses =
+                vehicleLicenseRepository.findByVehicleIdAndDateBetweenAndDeletedFalse(vehicle.getId(), startDate, endDate);
 
-        if (vehicleLicenses.isEmpty()) {
-            return BigDecimal.ZERO; // per spec section 15 - not an error
-        }
-        if (vehicleLicenses.size() > 1) {
-            log.error("Data integrity error: {} vehicle license records found for vehicleId={}, date={}",
-                    vehicleLicenses.size(), vehicle.getId(), date);
-            throw new BusinessException(
-                    "Multiple vehicle license records exist for vehicle " + vehicle.getVehicleNumber()
-                            + " on " + date + ". This indicates a data integrity issue.",
-                    ErrorCodeConstants.DATA_INTEGRITY_ERROR);
+        Set<Long> distinctActiveLicenseIds = new LinkedHashSet<>();
+        for (VehicleLicense vl : vehicleLicenses) {
+            if (vl.getStatus() == VehicleLicenseStatus.ACTIVE) {
+                distinctActiveLicenseIds.add(vl.getLicense().getId());
+            }
         }
 
-        VehicleLicense vehicleLicense = vehicleLicenses.get(0);
-        if (vehicleLicense.getStatus() != VehicleLicenseStatus.ACTIVE) {
-            return BigDecimal.ZERO; // INACTIVE - per spec section 17
+        if (distinctActiveLicenseIds.isEmpty()) {
+            return BigDecimal.ZERO;
         }
 
-        Long licenseId = vehicleLicense.getLicense().getId();
-        License license = licenseRepository.findById(licenseId)
-                .orElseThrow(() -> {
-                    log.error("Data integrity error: VehicleLicense id={} is ACTIVE but references "
-                            + "nonexistent License id={}", vehicleLicense.getId(), licenseId);
-                    return new BusinessException(
-                            "The active vehicle license for " + vehicle.getVehicleNumber()
-                                    + " references a license that no longer exists. This indicates a data integrity issue.",
-                            ErrorCodeConstants.DATA_INTEGRITY_ERROR);
-                });
-
-        return license.getPrice();
+        BigDecimal total = BigDecimal.ZERO;
+        Set<Long> resolvedForLogging = new HashSet<>();
+        for (Long licenseId : distinctActiveLicenseIds) {
+            License license = licenseRepository.findById(licenseId)
+                    .orElseThrow(() -> {
+                        log.error("Data integrity error: an ACTIVE VehicleLicense for vehicleId={} references "
+                                + "nonexistent License id={}", vehicle.getId(), licenseId);
+                        return new BusinessException(
+                                "An active vehicle license for " + vehicle.getVehicleNumber()
+                                        + " references a license that no longer exists. This indicates a data integrity issue.",
+                                ErrorCodeConstants.DATA_INTEGRITY_ERROR);
+                    });
+            total = total.add(license.getPrice());
+            resolvedForLogging.add(licenseId);
+        }
+        log.info("Licence fee resolved for vehicleId={}: distinct licenses={}, total={}",
+                vehicle.getId(), resolvedForLogging, total);
+        return total;
     }
 }

@@ -1,17 +1,17 @@
 package com.pixelMind.materialGrid.controller;
 
-import com.pixelMind.materialGrid.dto.response.CommonResponseDTO;
-import com.pixelMind.materialGrid.dto.response.DailyRouteReportResponse;
-import com.pixelMind.materialGrid.dto.response.ReceiptSummaryDTO;
+import com.pixelMind.materialGrid.dto.response.DailyRoutePaymentReceipt;
 import com.pixelMind.materialGrid.service.DailyRoutePdfService;
 import com.pixelMind.materialGrid.service.DailyRouteReportService;
 import com.pixelMind.materialGrid.util.PdfFileNameUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.*;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,14 +20,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 
 /**
- * Deliberately thin: request in, delegate to DailyRouteReportService for
- * data + calculation, delegate to DailyRoutePdfService for rendering,
- * attach the right Content-Disposition, return bytes. No business logic,
- * no database access, no PDF-library code here.
+ * MODIFIED: only the return type of the service call changed (now
+ * DailyRoutePaymentReceipt) - endpoints, parameters, and response headers
+ * are unchanged from the date-range version. Still deliberately thin.
  */
-@Tag(name = "Daily Route Reports", description = "Read-only PDF report for a single vehicle's Daily Route on a given date")
+@Tag(name = "Daily Route Reports", description = "Read-only vehicle payment receipt (PDF) for a date range")
 @RestController
-@Slf4j
 @RequestMapping("/api/v1/daily-routes/report")
 @RequiredArgsConstructor
 public class DailyRouteReportController {
@@ -35,58 +33,30 @@ public class DailyRouteReportController {
     private final DailyRouteReportService dailyRouteReportService;
     private final DailyRoutePdfService dailyRoutePdfService;
 
-    @GetMapping(value = "/summary")
-    public ResponseEntity<CommonResponseDTO> getSummary(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam Long vehicleId
-    ) {
-
-        log.info("DailyRouteReportController.getSummary() => accessed");
-
-        return ResponseEntity.ok(
-                new CommonResponseDTO(
-                        dailyRouteReportService.getSummary(
-                                date, vehicleId
-                        ),
-                        "Receipt summary",
-                        HttpStatus.OK
-                )
-        );
-
-    }
-
-    @Operation(summary = "Preview the Daily Route report PDF inline (date + vehicleId)")
+    @Operation(summary = "Preview the vehicle payment receipt PDF inline (startDate + endDate + vehicleId)")
     @GetMapping("/preview")
     public ResponseEntity<byte[]> preview(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam Long vehicleId) {
-
-        log.info("DailyRouteReportController.preview() => accessed");
-
-        return buildPdfResponse(date, vehicleId, ContentDisposition.inline());
+        return buildPdfResponse(startDate, endDate, vehicleId, ContentDisposition.inline());
     }
 
-    @Operation(summary = "Download the Daily Route report PDF as an attachment (date + vehicleId)")
+    @Operation(summary = "Download the vehicle payment receipt PDF as an attachment (startDate + endDate + vehicleId)")
     @GetMapping("/download")
     public ResponseEntity<byte[]> download(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam Long vehicleId) {
-
-        log.info("DailyRouteReportController.download() => accessed");
-
-        return buildPdfResponse(date, vehicleId, ContentDisposition.attachment());
+        return buildPdfResponse(startDate, endDate, vehicleId, ContentDisposition.attachment());
     }
 
-    private ResponseEntity<byte[]> buildPdfResponse(LocalDate date, Long vehicleId,
+    private ResponseEntity<byte[]> buildPdfResponse(LocalDate startDate, LocalDate endDate, Long vehicleId,
                                                     ContentDisposition.Builder dispositionBuilder) {
+        DailyRoutePaymentReceipt receipt = dailyRouteReportService.generateReport(startDate, endDate, vehicleId);
+        byte[] pdfBytes = dailyRoutePdfService.generatePdf(receipt);
 
-        log.info("DailyRouteReportController.buildPdfResponse() => accessed");
-
-        DailyRouteReportResponse report = dailyRouteReportService.generateReport(date, vehicleId);
-
-        byte[] pdfBytes = dailyRoutePdfService.generatePdf(report);
-
-        String fileName = PdfFileNameUtil.buildFileName(report.getVehicleNumber(), report.getDate());
+        String fileName = PdfFileNameUtil.buildFileName(receipt.getVehicleNumber(), receipt.getStartDate(), receipt.getEndDate());
         ContentDisposition disposition = dispositionBuilder.filename(fileName).build();
 
         HttpHeaders headers = new HttpHeaders();

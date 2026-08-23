@@ -25,9 +25,4 @@ public class VehicleUpdateRequest {
 
     private Boolean status;
 
-    // vehicleNumber is treated as immutable after creation, same rationale
-    // as routeCode/licenseCode: it is how the vehicle is referenced
-    // everywhere else (expenses, licenses, daily routes) so changing it
-    // silently would be surprising. Expose a dedicated endpoint later if a
-    // genuine re-plating business need arises.
 }

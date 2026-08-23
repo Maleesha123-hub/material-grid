@@ -15,8 +15,8 @@ public class PriceRateResponse {
     private Long id;
     private BigDecimal price;
     private PriceRateStatus status;
-    private String addedBy;
-    private LocalDateTime addedDate;
+    private String createdBy;
+    private LocalDateTime createdDate;
     private String modifiedBy;
     private LocalDateTime modifiedDate;
 }

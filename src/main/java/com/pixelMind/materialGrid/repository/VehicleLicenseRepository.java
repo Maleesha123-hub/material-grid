@@ -5,50 +5,48 @@ import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 
 public interface VehicleLicenseRepository extends JpaRepository<VehicleLicense, Long> {
 
-    Page<VehicleLicense> findByVehicleId(Long vehicleId, Pageable pageable);
+    Page<VehicleLicense> findByVehicleIdAndDeletedFalse(
+            Long vehicleId,
+            Pageable pageable);
 
-    Page<VehicleLicense> findByLicenseId(Long licenseId, Pageable pageable);
+    Page<VehicleLicense> findByLicenseIdAndDeletedFalse(
+            Long licenseId,
+            Pageable pageable);
 
-    Page<VehicleLicense> findByStatus(VehicleLicenseStatus status, Pageable pageable);
+    Page<VehicleLicense> findByStatusAndDeletedFalse(
+            VehicleLicenseStatus status,
+            Pageable pageable);
 
-    Page<VehicleLicense> findByVehicleIdAndStatus(Long vehicleId, VehicleLicenseStatus status, Pageable pageable);
+    Page<VehicleLicense> findByVehicleIdAndStatusAndDeletedFalse(
+            Long vehicleId,
+            VehicleLicenseStatus status,
+            Pageable pageable);
 
-    boolean existsByVehicleId(Long vehicleId);
+    boolean existsByVehicleIdAndDeletedFalse(Long vehicleId);
 
-    boolean existsByLicenseId(Long licenseId);
+    boolean existsByLicenseIdAndDeletedFalse(Long licenseId);
 
-    List<VehicleLicense> findByVehicleIdInAndLicenseIdIn(Collection<Long> vehicleIds, Collection<Long> licenseIds);
+    boolean existsByVehicleIdAndLicenseIdAndDeletedFalse(
+            Long vehicleId,
+            Long licenseId);
 
-    /**
-     * Used by the Daily Route PDF report. Returns a List, not Optional -
-     * same rationale as DailyRouteRepository#findByVehicleIdAndDateAndDeletedFalse:
-     * lets the service tell "no license" apart from "duplicate license data",
-     * rather than an opaque Spring Data exception.
-     *
-     * Deliberately does NOT filter by license date range - see the mandatory
-     * rule in the report service.
-     */
-    List<VehicleLicense> findByVehicleIdAndDate(Long vehicleId, LocalDate date);
+    List<VehicleLicense> findByVehicleIdInAndLicenseIdInAndDeletedFalse(
+            Collection<Long> vehicleIds,
+            Collection<Long> licenseIds);
 
-    @Query("""
-            select coalesce(sum(e.license.price), 0)
-            from VehicleLicense e
-            where e.vehicle.id = :vehicleId
-            and e.date = :date
-            and e.status = :status
-            """)
-    BigDecimal sumLicenseAmountByVehicleIdAndDate(
-            @Param("vehicleId") Long vehicleId,
-            @Param("date") LocalDate date,
-            @Param("status") VehicleLicenseStatus status);
+    List<VehicleLicense> findByVehicleIdAndDateAndDeletedFalse(
+            Long vehicleId,
+            LocalDate date);
+
+    List<VehicleLicense> findByVehicleIdAndDateBetweenAndDeletedFalse(
+            Long vehicleId,
+            LocalDate startDate,
+            LocalDate endDate);
 }
