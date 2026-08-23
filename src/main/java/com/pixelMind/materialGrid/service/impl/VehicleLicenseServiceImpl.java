@@ -119,10 +119,8 @@ public class VehicleLicenseServiceImpl implements VehicleLicenseService {
     @Transactional
     public void deleteVehicleLicense(Long id) {
         VehicleLicense vehicleLicense = findOrThrow(id);
-        // Unlike VehicleExpense/DailyRoute, a VehicleLicense assignment
-        // record has no monetary/accounting weight on its own - it is a
-        // status marker, and can be corrected/removed directly if entered
-        // in error. Hard delete is acceptable here.
+        vehicleLicense.setDeleted(true);
+        vehicleLicense.setModifiedBy(SecurityUtil.getCurrentUsername());
         vehicleLicenseRepository.delete(vehicleLicense);
         log.info("VehicleLicense deleted: id={}, by={}", id, SecurityUtil.getCurrentUsername());
     }
