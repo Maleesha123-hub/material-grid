@@ -158,7 +158,7 @@ public class PriceRateServiceImpl implements PriceRateService {
         currentActive.ifPresent(rate -> {
             rate.setStatus(PriceRateStatus.INACTIVE);
             rate.setModifiedBy(actor);
-            priceRateRepository.save(rate);
+            priceRateRepository.saveAndFlush(rate);
             log.info("Price rate auto-deactivated: id={}, replacedBy activation, by={}", rate.getId(), actor);
         });
     }
