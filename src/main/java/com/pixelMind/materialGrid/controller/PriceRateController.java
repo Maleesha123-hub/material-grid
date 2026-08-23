@@ -66,6 +66,6 @@ public class PriceRateController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         priceRateService.deletePriceRate(id);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        return ResponseEntity.ok(ApiResponse.success("Price rate deleted successfully", null));
     }
 }
