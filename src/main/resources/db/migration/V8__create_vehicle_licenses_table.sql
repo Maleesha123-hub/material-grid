@@ -1,25 +1,21 @@
--- CREATE TABLE vehicle_licenses (
---     id               BIGINT AUTO_INCREMENT PRIMARY KEY,
---     vehicle_id       BIGINT       NOT NULL,
---     license_id       BIGINT       NOT NULL,
---     assignment_date  DATE         NOT NULL,
---     status           VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
---     created_by       VARCHAR(50),
---     created_date     DATETIME(6)  NOT NULL,
---     modified_by      VARCHAR(50),
---     modified_date    DATETIME(6)  NOT NULL,
---     version          BIGINT       NOT NULL DEFAULT 0,
---
---     -- No UNIQUE(vehicle_id, license_id): a vehicle legitimately holds the
---     -- same license type again after renewal/reissue, each with its own
---     -- date and status. Preventing that would corrupt real business history.
---     -- See VehicleLicenseServiceImpl for the full rationale.
---     CONSTRAINT fk_vehicle_licenses_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles (id),
---     CONSTRAINT fk_vehicle_licenses_license FOREIGN KEY (license_id) REFERENCES licenses (id)
--- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
---
--- -- Composite index supports the two most common query patterns
--- -- ("licenses for this vehicle", "vehicles for this license") plus status
--- -- filtering without a full table scan.
--- CREATE INDEX idx_vehicle_licenses_vehicle_status ON vehicle_licenses (vehicle_id, status);
--- CREATE INDEX idx_vehicle_licenses_license_status ON vehicle_licenses (license_id, status);
+-- material_grid.vehicle_licenses definition
+
+CREATE TABLE `vehicle_licenses`
+(
+    `id`              bigint      NOT NULL AUTO_INCREMENT,
+    `vehicle_id`      bigint      NOT NULL,
+    `license_id`      bigint      NOT NULL,
+    `assignment_date` date        NOT NULL,
+    `status`          varchar(20) NOT NULL DEFAULT 'ACTIVE',
+    `created_by`      varchar(50)          DEFAULT NULL,
+    `created_date`    datetime(6) NOT NULL,
+    `modified_by`     varchar(50)          DEFAULT NULL,
+    `modified_date`   datetime(6) NOT NULL,
+    `version`         bigint      NOT NULL DEFAULT '0',
+    `active`          bit(1)      NOT NULL,
+    PRIMARY KEY (`id`),
+    KEY               `idx_vehicle_licenses_vehicle_status` (`vehicle_id`,`status`),
+    KEY               `idx_vehicle_licenses_license_status` (`license_id`,`status`),
+    CONSTRAINT `fk_vehicle_licenses_license` FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`),
+    CONSTRAINT `fk_vehicle_licenses_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

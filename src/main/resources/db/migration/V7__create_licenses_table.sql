@@ -1,16 +1,20 @@
--- CREATE TABLE licenses (
---     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
---     license_code    VARCHAR(20)   NOT NULL,
---     start_date      DATE          NOT NULL,
---     end_date        DATE          NOT NULL,
---     price           DECIMAL(19,4) NOT NULL,
---     created_by      VARCHAR(50),
---     created_date    DATETIME(6)   NOT NULL,
---     modified_by     VARCHAR(50),
---     modified_date   DATETIME(6)   NOT NULL,
---     version         BIGINT        NOT NULL DEFAULT 0,
---
---     CONSTRAINT uk_licenses_license_code UNIQUE (license_code),
---     CONSTRAINT chk_licenses_price_positive CHECK (price > 0),
---     CONSTRAINT chk_licenses_date_range CHECK (end_date >= start_date)
--- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- material_grid.licenses definition
+
+CREATE TABLE `licenses`
+(
+    `id`            bigint         NOT NULL AUTO_INCREMENT,
+    `license_code`  varchar(20)    NOT NULL,
+    `start_date`    date           NOT NULL,
+    `end_date`      date           NOT NULL,
+    `price`         decimal(19, 4) NOT NULL,
+    `created_by`    varchar(50)             DEFAULT NULL,
+    `created_date`  datetime(6) NOT NULL,
+    `modified_by`   varchar(50)             DEFAULT NULL,
+    `modified_date` datetime(6) NOT NULL,
+    `version`       bigint         NOT NULL DEFAULT '0',
+    `active`        bit(1)         NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_licenses_license_code` (`license_code`),
+    CONSTRAINT `chk_licenses_date_range` CHECK ((`end_date` >= `start_date`)),
+    CONSTRAINT `chk_licenses_price_positive` CHECK ((`price` > 0))
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

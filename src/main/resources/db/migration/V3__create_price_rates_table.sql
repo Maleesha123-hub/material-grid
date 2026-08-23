@@ -1,19 +1,16 @@
--- CREATE TABLE price_rates (
---     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
---     price           DECIMAL(19,4) NOT NULL,
---     status          VARCHAR(20)   NOT NULL DEFAULT 'INACTIVE',
---     added_by        VARCHAR(50)   NOT NULL,
---     added_date      DATETIME(6)   NOT NULL,
---     modified_by     VARCHAR(50),
---     modified_date   DATETIME(6)   NOT NULL,
---     version         BIGINT        NOT NULL DEFAULT 0,
---
---     -- Same generated-column trick as user_sessions: guarantees at most one
---     -- ACTIVE price rate can exist at any time, enforced by MySQL itself.
---     active_marker TINYINT AS (CASE WHEN status = 'ACTIVE' THEN 1 ELSE NULL END) STORED,
---
---     CONSTRAINT uk_price_rates_active UNIQUE (active_marker),
---     CONSTRAINT chk_price_rates_price_positive CHECK (price > 0)
--- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
---
--- CREATE INDEX idx_price_rates_status ON price_rates (status);
+-- material_grid.price_rates definition
+
+CREATE TABLE `price_rates`
+(
+    `id`            bigint         NOT NULL AUTO_INCREMENT,
+    `price`         decimal(19, 4) NOT NULL,
+    `status`        varchar(20)    NOT NULL DEFAULT 'INACTIVE',
+    `added_by`      varchar(50)    NOT NULL,
+    `added_date`    datetime(6) NOT NULL,
+    `modified_by`   varchar(50)             DEFAULT NULL,
+    `modified_date` datetime(6) NOT NULL,
+    `version`       bigint         NOT NULL DEFAULT '0',
+    PRIMARY KEY (`id`),
+    KEY             `idx_price_rates_status` (`status`),
+    CONSTRAINT `chk_price_rates_price_positive` CHECK ((`price` > 0))
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
