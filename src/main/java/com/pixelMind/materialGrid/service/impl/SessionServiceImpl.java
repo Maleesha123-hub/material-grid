@@ -53,13 +53,18 @@ public class SessionServiceImpl implements SessionService {
             log.info("Superseded previous active session for userId={} (session replacement)", userId);
         });
 
-        UserSession newSession = UserSession.builder()
-                .userId(userId)
-                .sessionToken(SecurityUtil.generateSessionToken(SecurityConstants.SESSION_TOKEN_LENGTH_BYTES))
-                .status(SessionStatus.ACTIVE)
-                .build();
+        UserSession saved = new UserSession();
+        if (existingActive.isEmpty()) {
 
-        UserSession saved = userSessionRepository.save(newSession);
+            UserSession newSession = UserSession.builder()
+                    .userId(userId)
+                    .sessionToken(SecurityUtil.generateSessionToken(SecurityConstants.SESSION_TOKEN_LENGTH_BYTES))
+                    .status(SessionStatus.ACTIVE)
+                    .build();
+
+            saved = userSessionRepository.save(newSession);
+        }
+
         log.info("New active session created for userId={}", userId);
         return saved;
     }
