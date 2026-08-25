@@ -42,10 +42,6 @@ public class DailyRoute extends BaseAuditableEntity {
     private Vehicle vehicle;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "price_rate_id", nullable = false)
-    private PriceRate priceRate;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "route_id", nullable = false)
     private Route route;
 

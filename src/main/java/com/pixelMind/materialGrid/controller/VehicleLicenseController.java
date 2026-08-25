@@ -3,9 +3,11 @@ package com.pixelMind.materialGrid.controller;
 import com.pixelMind.materialGrid.dto.request.VehicleLicenseCreateRequest;
 import com.pixelMind.materialGrid.dto.request.VehicleLicenseUpdateRequest;
 import com.pixelMind.materialGrid.dto.response.ApiResponse;
+import com.pixelMind.materialGrid.dto.response.BulkUploadResponse;
 import com.pixelMind.materialGrid.dto.response.PageResponse;
 import com.pixelMind.materialGrid.dto.response.VehicleLicenseResponse;
 import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
+import com.pixelMind.materialGrid.service.VehicleLicenseImportService;
 import com.pixelMind.materialGrid.service.VehicleLicenseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,8 +16,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "Vehicle Licenses", description = "Vehicle-to-License assignment records (date + status), supports repeat/renewal assignments")
 @RestController
@@ -24,12 +28,20 @@ import org.springframework.web.bind.annotation.*;
 public class VehicleLicenseController {
 
     private final VehicleLicenseService vehicleLicenseService;
+    private final VehicleLicenseImportService vehicleLicenseImportService;
 
     @Operation(summary = "Assign a license to a vehicle")
     @PostMapping
     public ResponseEntity<ApiResponse<VehicleLicenseResponse>> create(@Valid @RequestBody VehicleLicenseCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Vehicle license created successfully", vehicleLicenseService.createVehicleLicense(request)));
+    }
+
+    @Operation(summary = "Bulk-upload vehicle licenses from an Excel file (Date | Vehicle Number | License Code). All-or-nothing; rejects a filename+type already uploaded before, and any (vehicle, license, date) already on record.")
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<BulkUploadResponse>> upload(@RequestParam("file") MultipartFile file) {
+        BulkUploadResponse result = vehicleLicenseImportService.importFromExcel(file);
+        return ResponseEntity.ok(ApiResponse.success(result.getMessage(), result));
     }
 
     @Operation(summary = "List vehicle-license assignments (paginated, filterable by status)")

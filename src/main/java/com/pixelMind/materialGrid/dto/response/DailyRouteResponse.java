@@ -16,7 +16,6 @@ public class DailyRouteResponse {
     private LocalDate date;
     private VehicleSummaryResponse vehicle;
     private RouteSummaryResponse route;
-    private PriceRateSummaryResponse priceRate;
     private BigDecimal amount;
     private String checkBy;
     private String bilNumber;

@@ -42,6 +42,9 @@ public class Route extends BaseAuditableEntity {
     @Column(name = "km", nullable = false, precision = 10, scale = 2)
     private BigDecimal km;
 
+    @Column(name = "price", nullable = false, precision = 19, scale = 4)
+    private BigDecimal price;
+
     @Column(name = "deleted", nullable = false)
     @Builder.Default
     private boolean deleted = false;

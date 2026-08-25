@@ -19,6 +19,4 @@ public class VehicleLicenseUpdateRequest {
     @NotNull(message = "Status is required")
     private VehicleLicenseStatus status;
 
-    // vehicle/license associations are immutable on update - to reassign,
-    // create a new assignment record instead, preserving history.
 }

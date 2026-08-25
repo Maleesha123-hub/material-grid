@@ -37,7 +37,7 @@ public class LicenseServiceImpl implements LicenseService {
     @Transactional
     public LicenseResponse createLicense(LicenseCreateRequest request) {
         validateDateRange(request.getStartDate(), request.getEndDate());
-        validateNoDateOverlap(null, request.getStartDate(), request.getEndDate());
+        //validateNoDateOverlap(null, request.getStartDate(), request.getEndDate());
         String actor = SecurityUtil.getCurrentUsername();
 
         String licenseCode = codeGeneratorService.nextCode(

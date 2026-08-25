@@ -161,10 +161,11 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
             for (DailyRoute dailyRoute : recordsForDate) {
                 totalAmountForDate = totalAmountForDate.add(dailyRoute.getAmount());
                 totalKmForDate = dailyRoute.getRoute().getKm();
-                distinctRatesForDate.add(dailyRoute.getPriceRate().getPrice());
+                distinctRatesForDate.add(dailyRoute.getRoute().getPrice());
                 distinctRouteCodesForDate.add(dailyRoute.getRoute().getRouteCode());
             }
 
+            // check with multiple routes
             if (distinctRatesForDate.size() > 1) {
                 throw new BusinessException(
                         "Multiple price rates found for vehicle " + vehicle.getVehicleNumber()

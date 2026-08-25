@@ -19,20 +19,18 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
               and (:date is null or d.date = :date)
               and (:vehicleId is null or d.vehicle.id = :vehicleId)
               and (:routeId is null or d.route.id = :routeId)
-              and (:priceRateId is null or d.priceRate.id = :priceRateId)
             """)
     Page<DailyRoute> search(
             @Param("date") LocalDate date,
             @Param("vehicleId") Long vehicleId,
             @Param("routeId") Long routeId,
-            @Param("priceRateId") Long priceRateId,
             Pageable pageable);
 
     boolean existsByVehicleIdAndDeletedFalse(Long vehicleId);
 
     boolean existsByRouteIdAndDeletedFalse(Long routeId);
 
-    boolean existsByPriceRateIdAndDeletedFalse(Long priceRateId);
+    //boolean existsByPriceRateIdAndDeletedFalse(Long priceRateId);
 
     @Query("""
             select d from DailyRoute d
@@ -52,7 +50,6 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
 
     @Query("""
             select d from DailyRoute d
-            join fetch d.priceRate
             join fetch d.route
             where d.deleted = false
               and d.vehicle.id = :vehicleId

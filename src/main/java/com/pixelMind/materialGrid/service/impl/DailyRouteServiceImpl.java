@@ -53,16 +53,14 @@ public class DailyRouteServiceImpl implements DailyRouteService {
     public DailyRouteResponse createDailyRoute(DailyRouteCreateRequest request) {
         Vehicle vehicle = findVehicleOrThrow(request.getVehicleId());
         Route route = findRouteOrThrow(request.getRouteId());
-        PriceRate activePriceRate = findActivePriceRateOrThrow();
 
         String actor = SecurityUtil.getCurrentUsername();
-        BigDecimal amount = computeAmount(vehicle, activePriceRate, route);
+        BigDecimal amount = computeAmount(vehicle, route);
 
         DailyRoute dailyRoute = DailyRoute.builder()
                 .date(request.getDate())
                 .vehicle(vehicle)
                 .route(route)
-                .priceRate(activePriceRate)
                 .amount(amount)
                 .checkBy(request.getCheckBy())
                 .billNumber(request.getBillNumber())
@@ -71,8 +69,8 @@ public class DailyRouteServiceImpl implements DailyRouteService {
                 .build();
 
         DailyRoute saved = dailyRouteRepository.save(dailyRoute);
-        log.info("DailyRoute created: id={}, vehicleId={}, routeId={}, priceRateId={}, amount={}, by={}",
-                saved.getId(), vehicle.getId(), route.getId(), activePriceRate.getId(), amount, actor);
+        log.info("DailyRoute created: id={}, vehicleId={}, routeId={}, amount={}, by={}",
+                saved.getId(), vehicle.getId(), route.getId(), amount, actor);
         return dailyRouteMapper.toResponse(saved);
     }
 
@@ -88,11 +86,10 @@ public class DailyRouteServiceImpl implements DailyRouteService {
             LocalDate date,
             Long vehicleId,
             Long routeId,
-            Long priceRateId,
             Pageable pageable
     ) {
 
-        return dailyRouteRepository.search(date, vehicleId, routeId, priceRateId, pageable)
+        return dailyRouteRepository.search(date, vehicleId, routeId, pageable)
                 .map(dailyRouteMapper::toResponse);
     }
 
@@ -102,13 +99,11 @@ public class DailyRouteServiceImpl implements DailyRouteService {
         DailyRoute dailyRoute = findOrThrow(id);
         Vehicle vehicle = findVehicleOrThrow(request.getVehicleId());
         Route route = findRouteOrThrow(request.getRouteId());
-        PriceRate activePriceRate = findActivePriceRateOrThrow();
 
         dailyRoute.setDate(request.getDate());
         dailyRoute.setVehicle(vehicle);
         dailyRoute.setRoute(route);
-        dailyRoute.setPriceRate(activePriceRate);
-        dailyRoute.setAmount(computeAmount(vehicle, activePriceRate, route));
+        dailyRoute.setAmount(computeAmount(vehicle, route));
         dailyRoute.setCheckBy(request.getCheckBy());
         dailyRoute.setBillNumber(request.getBillNumber());
         dailyRoute.setModifiedBy(SecurityUtil.getCurrentUsername());
@@ -128,9 +123,9 @@ public class DailyRouteServiceImpl implements DailyRouteService {
         log.info("DailyRoute soft-deleted: id={}, by={}", id, dailyRoute.getModifiedBy());
     }
 
-    private BigDecimal computeAmount(Vehicle vehicle, PriceRate priceRate, Route route) {
+    private BigDecimal computeAmount(Vehicle vehicle, Route route) {
         return vehicle.getCapacity()
-                .multiply(priceRate.getPrice())
+                .multiply(route.getPrice())
                 .multiply(route.getKm())
                 .setScale(2, RoundingMode.HALF_UP);
     }

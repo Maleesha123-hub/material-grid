@@ -18,6 +18,7 @@ public class RouteMapper {
                 .startLocation(route.getStartLocation())
                 .endLocation(route.getEndLocation())
                 .km(route.getKm())
+                .price(route.getPrice())
                 .createdBy(route.getCreatedBy())
                 .createdDate(route.getCreatedDate())
                 .modifiedBy(route.getModifiedBy())

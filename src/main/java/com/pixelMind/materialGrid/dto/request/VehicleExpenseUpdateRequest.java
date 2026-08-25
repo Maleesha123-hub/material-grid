@@ -21,6 +21,4 @@ public class VehicleExpenseUpdateRequest {
     @DecimalMin(value = "0.0001", message = "Expenses must be greater than zero")
     private BigDecimal expenses;
 
-    // vehicle association is immutable on update, same historical-integrity
-    // rationale as VehicleLicense.
 }

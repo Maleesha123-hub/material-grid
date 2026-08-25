@@ -16,9 +16,9 @@ public class RouteResponse {
     private String startLocation;
     private String endLocation;
     private BigDecimal km;
+    private BigDecimal price;
     private String createdBy;
     private LocalDateTime createdDate;
     private String modifiedBy;
     private LocalDateTime modifiedDate;
-    private String status;
 }

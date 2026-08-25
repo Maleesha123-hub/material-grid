@@ -66,7 +66,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
     private record RawRow(int rowNumber, LocalDate date, String vehicleNumber, String bilNumber, String routeCode, String checkBy) {
     }
 
-    private record ResolvedRow(LocalDate date, Vehicle vehicle, String bilNumber, Route route, License license, String checkBy) {
+    private record ResolvedRow(LocalDate date, Vehicle vehicle, String bilNumber, Route route, String checkBy) {
     }
 
     @Override
@@ -142,19 +142,18 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
             Map<String, Route> routeByCode = routeRepository.findByRouteCodeInAndDeletedFalse(distinctRouteCodes).stream()
                     .collect(Collectors.toMap(Route::getRouteCode, r -> r));
 
-            List<LocalDate> validDates = rawRows.stream().map(RawRow::date).filter(Objects::nonNull).toList();
-            List<License> candidateLicenses = List.of();
-            if (!validDates.isEmpty()) {
-                LocalDate minDate = validDates.stream().min(Comparator.naturalOrder()).get();
-                LocalDate maxDate = validDates.stream().max(Comparator.naturalOrder()).get();
-                candidateLicenses = licenseRepository.findByDateRange(maxDate, minDate);
-            }
-            final List<License> licensesForRange = candidateLicenses;
+//            List<LocalDate> validDates = rawRows.stream().map(RawRow::date).filter(Objects::nonNull).toList();
+//            List<License> candidateLicenses = List.of();
+//            if (!validDates.isEmpty()) {
+//                LocalDate minDate = validDates.stream().min(Comparator.naturalOrder()).get();
+//                LocalDate maxDate = validDates.stream().max(Comparator.naturalOrder()).get();
+//                candidateLicenses = licenseRepository.findByDateRange(maxDate, minDate);
+//            }
+//            final List<License> licensesForRange = candidateLicenses;
 
             List<ResolvedRow> resolved = new ArrayList<>();
-
             for (RawRow raw : rawRows) {
-                License license;
+//                License license;
 
                 Vehicle vehicle = vehicleByNumber.get(raw.vehicleNumber());
                     if (vehicle == null) {
@@ -170,61 +169,60 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                         continue;
                     }
 
-                    List<License> matches = licensesForRange.stream()
-                            .filter(l -> !l.getStartDate().isAfter(raw.date()) && !l.getEndDate().isBefore(raw.date()))
-                            .toList();
-                    if (matches.isEmpty()) {
-                        errors.add(error(raw.rowNumber(), "Date", raw.date().toString(),
-                                "No valid license found for date " + raw.date()));
-                        continue;
-                    } else if (matches.size() > 1) {
-                        errors.add(error(raw.rowNumber(), "Date", raw.date().toString(),
-                                "Multiple valid licenses found for date " + raw.date() + "; cannot determine which to use"));
-                        continue;
-                    } else {
-                        license = matches.getFirst();
-                    }
+//                    List<License> matches = licensesForRange.stream()
+//                            .filter(l -> !l.getStartDate().isAfter(raw.date()) && !l.getEndDate().isBefore(raw.date()))
+//                            .toList();
+//                    if (matches.isEmpty()) {
+//                        errors.add(error(raw.rowNumber(), "Date", raw.date().toString(),
+//                                "No valid license found for date " + raw.date()));
+//                        continue;
+//                    } else if (matches.size() > 1) {
+//                        errors.add(error(raw.rowNumber(), "Date", raw.date().toString(),
+//                                "Multiple valid licenses found for date " + raw.date() + "; cannot determine which to use"));
+//                        continue;
+//                    } else {
+//                        license = matches.getFirst();
+//                    }
 
                 if (raw.checkBy().isBlank()) {
                     continue;
                 }
 
-                resolved.add(new ResolvedRow(raw.date, vehicle, raw.bilNumber(), route, license, raw.checkBy()));
+                resolved.add(new ResolvedRow(raw.date, vehicle, raw.bilNumber(), route, raw.checkBy()));
             }
 
             if (!errors.isEmpty()) {
                 throw new ExcelValidationException("Daily route upload validation failed", errors, rawRows.size());
             }
 
-            PriceRate activePriceRate = priceRateRepository.findByStatus(PriceRateStatus.ACTIVE)
-                    .orElseThrow(() -> new BusinessException(
-                            "No active price rate is available.", ErrorCodeConstants.ACTIVE_PRICE_RATE_NOT_FOUND));
+//            PriceRate activePriceRate = priceRateRepository.findByStatus(PriceRateStatus.ACTIVE)
+//                    .orElseThrow(() -> new BusinessException(
+//                            "No active price rate is available.", ErrorCodeConstants.ACTIVE_PRICE_RATE_NOT_FOUND));
 
             FileHistory fileHistory = fileHistoryService.createFileHistory(fileName, FileType.DAILY_ROUTE);
             String actor = SecurityUtil.getCurrentUsername();
 
-            resolved.stream()
-                    .filter(row -> !vehicleLicenseRepository.existsByVehicleIdAndLicenseIdAndDeletedFalse(row.vehicle.getId(), row.license.getId()))
-                            .forEach(row -> {
-                                VehicleLicense vehicleLicense = VehicleLicense.builder()
-                                        .vehicle(row.vehicle)
-                                        .license(row.license)
-                                        .date(row.date)
-                                        .status(VehicleLicenseStatus.ACTIVE)
-                                        .createdBy(actor)
-                                        .modifiedBy(actor)
-                                        .build();
-                                VehicleLicense saved = vehicleLicenseRepository.save(vehicleLicense);
-                                log.info("Bulk daily route upload: activated {} vehicle license, by={}", saved.getId(), actor);
-                            });
+//            resolved.stream()
+//                    .filter(row -> !vehicleLicenseRepository.existsByVehicleIdAndLicenseIdAndDeletedFalse(row.vehicle.getId(), row.license.getId()))
+//                            .forEach(row -> {
+//                                VehicleLicense vehicleLicense = VehicleLicense.builder()
+//                                        .vehicle(row.vehicle)
+//                                        .license(row.license)
+//                                        .date(row.date)
+//                                        .status(VehicleLicenseStatus.ACTIVE)
+//                                        .createdBy(actor)
+//                                        .modifiedBy(actor)
+//                                        .build();
+//                                VehicleLicense saved = vehicleLicenseRepository.save(vehicleLicense);
+//                                log.info("Bulk daily route upload: activated {} vehicle license, by={}", saved.getId(), actor);
+//                            });
 
             List<DailyRoute> entities = (List<DailyRoute>) resolved.stream()
                     .map(row -> DailyRoute.builder()
                             .date(row.date())
                             .vehicle(row.vehicle())
                             .route(row.route())
-                            .priceRate(activePriceRate)
-                            .amount(computeAmount(row.vehicle(), activePriceRate, row.route()))
+                            .amount(computeAmount(row.vehicle(), row.route()))
                             .checkBy(row.checkBy())
                             .billNumber(row.bilNumber())
                             .fileHistory(fileHistory)
@@ -265,9 +263,9 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
         return ExcelValidationError.builder().rowNumber(rowNumber).field(field).value(value).message(message).build();
     }
 
-    private BigDecimal computeAmount(Vehicle vehicle, PriceRate priceRate, Route route) {
+    private BigDecimal computeAmount(Vehicle vehicle, Route route) {
         return vehicle.getCapacity()
-                .multiply(priceRate.getPrice())
+                .multiply(route.getPrice())
                 .multiply(route.getKm())
                 .setScale(2, RoundingMode.HALF_UP);
     }

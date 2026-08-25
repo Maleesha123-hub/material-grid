@@ -53,7 +53,12 @@ public class VehicleLicense extends BaseAuditableEntity {
     @Column(name = "status", nullable = false, length = 20)
     private VehicleLicenseStatus status;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "file_history_id", nullable = true)
+    private FileHistory fileHistory;
+
     @Column(name = "deleted", nullable = false)
     @Builder.Default
     private boolean deleted = false;
+
 }

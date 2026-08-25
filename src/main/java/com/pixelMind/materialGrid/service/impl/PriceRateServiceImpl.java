@@ -129,11 +129,11 @@ public class PriceRateServiceImpl implements PriceRateService {
         // deactivated (see DailyRoute entity Javadoc) - which only works if
         // the referenced PriceRate is never actually deleted out from under
         // them.
-        if (dailyRouteRepository.existsByPriceRateIdAndDeletedFalse(id)) {
-            throw new BusinessException(
-                    "Cannot delete a price rate that is referenced by existing daily route records.",
-                    ErrorCodeConstants.BUSINESS_RULE_VIOLATION);
-        }
+//        if (dailyRouteRepository.existsByPriceRateIdAndDeletedFalse(id)) {
+//            throw new BusinessException(
+//                    "Cannot delete a price rate that is referenced by existing daily route records.",
+//                    ErrorCodeConstants.BUSINESS_RULE_VIOLATION);
+//        }
         priceRateRepository.delete(priceRate);
         log.info("Price rate deleted: id={}, by={}", id, SecurityUtil.getCurrentUsername());
     }

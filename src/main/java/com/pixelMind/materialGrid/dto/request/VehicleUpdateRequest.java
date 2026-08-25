@@ -23,6 +23,4 @@ public class VehicleUpdateRequest {
     @DecimalMin(value = "0.01", message = "Capacity must be greater than zero")
     private BigDecimal capacity;
 
-    private Boolean status;
-
 }

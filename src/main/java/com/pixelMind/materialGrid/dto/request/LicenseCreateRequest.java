@@ -24,5 +24,4 @@ public class LicenseCreateRequest {
     @DecimalMin(value = "0.0001", message = "Price must be greater than zero")
     private BigDecimal price;
 
-    // licenseCode is generated server-side, never client-supplied.
 }

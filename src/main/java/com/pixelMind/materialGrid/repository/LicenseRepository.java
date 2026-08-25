@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 public interface LicenseRepository extends JpaRepository<License, Long> {
@@ -21,6 +22,18 @@ public interface LicenseRepository extends JpaRepository<License, Long> {
               AND l.endDate >= :minDate
             """)
     List<License> findByDateRange(
+            @Param("maxDate") LocalDate maxDate,
+            @Param("minDate") LocalDate minDate);
+
+    @Query("""
+            SELECT l FROM License l
+            WHERE l.deleted = false
+              AND l.licenseCode <= :licenseCode
+              AND l.startDate <= :maxDate
+              AND l.endDate >= :minDate
+            """)
+    List<License> findByDateRangeAndLicenseCode(
+            @Param("licenseCode") String licenseCode,
             @Param("maxDate") LocalDate maxDate,
             @Param("minDate") LocalDate minDate);
 
@@ -47,4 +60,6 @@ public interface LicenseRepository extends JpaRepository<License, Long> {
             @Param("id") Long id,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    List<License> findByLicenseCodeInAndDeletedFalse(Collection<String> licenseCodes);
 }

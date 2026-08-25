@@ -21,6 +21,4 @@ public class PriceRateCreateRequest {
     @NotNull(message = "Status is required")
     private PriceRateStatus status;
 
-    // addedBy / addedDate are deliberately absent - server derives them from
-    // the authenticated principal, never from client input.
 }
