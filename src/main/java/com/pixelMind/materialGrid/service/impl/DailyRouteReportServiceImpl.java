@@ -1,22 +1,15 @@
 package com.pixelMind.materialGrid.service.impl;
 
 import com.pixelMind.materialGrid.constant.ErrorCodeConstants;
+import com.pixelMind.materialGrid.dto.response.DailyExpensesPaymentReceiptRow;
 import com.pixelMind.materialGrid.dto.response.DailyRoutePaymentReceipt;
 import com.pixelMind.materialGrid.dto.response.DailyRoutePaymentReceiptRow;
 import com.pixelMind.materialGrid.dto.response.ReceiptSummaryDTO;
-import com.pixelMind.materialGrid.entity.DailyRoute;
-import com.pixelMind.materialGrid.entity.License;
-import com.pixelMind.materialGrid.entity.Vehicle;
-import com.pixelMind.materialGrid.entity.VehicleExpense;
-import com.pixelMind.materialGrid.entity.VehicleLicense;
+import com.pixelMind.materialGrid.entity.*;
 import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
 import com.pixelMind.materialGrid.exception.BusinessException;
 import com.pixelMind.materialGrid.exception.ResourceNotFoundException;
-import com.pixelMind.materialGrid.repository.DailyRouteRepository;
-import com.pixelMind.materialGrid.repository.LicenseRepository;
-import com.pixelMind.materialGrid.repository.VehicleExpenseRepository;
-import com.pixelMind.materialGrid.repository.VehicleLicenseRepository;
-import com.pixelMind.materialGrid.repository.VehicleRepository;
+import com.pixelMind.materialGrid.repository.*;
 import com.pixelMind.materialGrid.service.DailyRouteReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,26 +18,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * MANDATORY rule (unchanged): the Licence Fee lookup NEVER checks
  * License.startDate/endDate.
- *
+ * <p>
  * Multiple DailyRoute records per vehicle+date are expected and are
  * CONSOLIDATED into one receipt row per date (see buildConsolidatedRows()),
  * including consolidating their (possibly distinct) routes into one
  * comma-joined routeCode list and their KM into one summed total - see
  * DailyRoutePaymentReceiptRow's Javadoc.
- *
+ * <p>
  * Every method here is read-only.
  */
 @Slf4j
@@ -61,6 +47,7 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
     @Override
     @Transactional(readOnly = true)
     public DailyRoutePaymentReceipt generateReport(LocalDate startDate, LocalDate endDate, Long vehicleId) {
+
         if (startDate.isAfter(endDate)) {
             throw new BusinessException(
                     "Start date cannot be greater than end date.", ErrorCodeConstants.VALIDATION_FAILED);
@@ -76,35 +63,55 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
                     ErrorCodeConstants.DAILY_ROUTE_NOT_FOUND);
         }
 
-        Map<LocalDate, BigDecimal> paidAmountByDate = new HashMap<>();
         BigDecimal totalPaidAmount = BigDecimal.ZERO;
-        for (VehicleExpense expense : vehicleExpenseRepository.findByVehicleIdAndDateBetweenAndDeletedFalse(
-                vehicleId, startDate, endDate)) {
-            paidAmountByDate.merge(expense.getDate(), expense.getExpenses(), BigDecimal::add);
+
+        List<VehicleExpense> expenses = vehicleExpenseRepository.findByVehicleIdAndDateBetweenAndDeletedFalse(
+                vehicleId, startDate, endDate
+        );
+
+        for (VehicleExpense expense : expenses) {
             totalPaidAmount = totalPaidAmount.add(expense.getExpenses());
         }
 
-        List<DailyRoutePaymentReceiptRow> rows = buildConsolidatedRows(vehicle, dailyRoutes, paidAmountByDate);
+        // Unique routes per date of daily routes
+        Map<LocalDate, Set<Route>> routesByDate = dailyRoutes.stream()
+                .collect(Collectors.groupingBy(
+                        DailyRoute::getDate,
+                        Collectors.mapping(DailyRoute::getRoute, Collectors.toSet())
+                ));
+
+        // Unique dates daily expenses
+        Set<LocalDate> uniqueExpensesDates = expenses.stream()
+                .map(VehicleExpense::getDate)
+                .collect(Collectors.toSet());
+
+        List<DailyRoutePaymentReceiptRow> rows = buildConsolidatedRows(dailyRoutes, routesByDate);
+
+        List<DailyExpensesPaymentReceiptRow> paidRows = paidRows(uniqueExpensesDates, expenses);
 
         int totalLoadCount = 0;
         BigDecimal totalAmount = BigDecimal.ZERO;
-        BigDecimal totalKm = BigDecimal.ZERO;
+        BigDecimal routeDistance = BigDecimal.ZERO;
         TreeSet<BigDecimal> distinctOverallRates = new TreeSet<>();
+
         for (DailyRoutePaymentReceiptRow row : rows) {
+
             totalLoadCount += row.getLoadCount();
             totalAmount = totalAmount.add(row.getTotalAmount());
-            totalKm = totalKm.add(row.getTotalKm());
             distinctOverallRates.add(row.getPriceRate());
+
         }
+
         boolean priceRateVaries = distinctOverallRates.size() > 1;
+
         BigDecimal overallPriceRate = priceRateVaries ? null : distinctOverallRates.first();
 
         BigDecimal licenceFee = resolveLicenceFeeForRange(vehicle, startDate, endDate);
         BigDecimal balance = totalAmount.subtract(totalPaidAmount.add(licenceFee));
 
         log.info("Vehicle payment receipt generated: vehicleId={}, startDate={}, endDate={}, dateRows={}, "
-                        + "totalLoadCount={}, totalKm={}, totalAmount={}, totalPaidAmount={}, licenceFee={}, balance={}",
-                vehicleId, startDate, endDate, rows.size(), totalLoadCount, totalKm, totalAmount, totalPaidAmount,
+                        + "totalLoadCount={}, routeDistance={}, totalAmount={}, totalPaidAmount={}, licenceFee={}, balance={}",
+                vehicleId, startDate, endDate, rows.size(), totalLoadCount, routeDistance, totalAmount, totalPaidAmount,
                 licenceFee, balance);
 
         return DailyRoutePaymentReceipt.builder()
@@ -113,8 +120,8 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
                 .startDate(startDate)
                 .endDate(endDate)
                 .rows(rows)
+                .paidRows(paidRows)
                 .totalLoadCount(totalLoadCount)
-                .totalKm(totalKm)
                 .priceRate(overallPriceRate)
                 .priceRateVaries(priceRateVaries)
                 .totalAmount(totalAmount)
@@ -136,57 +143,76 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
      * the map equals ascending date order - no separate sort needed.
      */
     private List<DailyRoutePaymentReceiptRow> buildConsolidatedRows(
-            Vehicle vehicle, List<DailyRoute> dailyRoutes, Map<LocalDate, BigDecimal> paidAmountByDate) {
+            List<DailyRoute> dailyRoutes,
+            Map<LocalDate, Set<Route>> routesByDate
+    ) {
+        List<DailyRoutePaymentReceiptRow> rows = new ArrayList<>();
 
-        Map<LocalDate, List<DailyRoute>> byDate = new LinkedHashMap<>();
-        for (DailyRoute dailyRoute : dailyRoutes) {
-            byDate.computeIfAbsent(dailyRoute.getDate(), d -> new ArrayList<>()).add(dailyRoute);
-        }
+        routesByDate.forEach((routeDate, routes) -> {
 
-        List<DailyRoutePaymentReceiptRow> rows = new ArrayList<>(byDate.size());
-        for (Map.Entry<LocalDate, List<DailyRoute>> entry : byDate.entrySet()) {
-            LocalDate date = entry.getKey();
-            List<DailyRoute> recordsForDate = entry.getValue();
+            routes.forEach(route -> {
 
-            BigDecimal totalAmountForDate = BigDecimal.ZERO;
-            BigDecimal totalKmForDate = BigDecimal.ZERO;
-            // TreeSet: BigDecimal.equals() is scale-sensitive, compareTo()
-            // is not - this correctly treats equal price VALUES as one
-            // entry regardless of stored scale.
-            TreeSet<BigDecimal> distinctRatesForDate = new TreeSet<>();
-            // LinkedHashSet: dedupes route codes while preserving the order
-            // they were first encountered that day.
-            Set<String> distinctRouteCodesForDate = new LinkedHashSet<>();
+                int loadCount = Math.toIntExact(dailyRoutes.stream()
+                        .filter(dr -> dr.getRoute().equals(route))
+                        .filter(dr -> dr.getDate().equals(routeDate))
+                        .count());
 
-            for (DailyRoute dailyRoute : recordsForDate) {
-                totalAmountForDate = totalAmountForDate.add(dailyRoute.getAmount());
-                totalKmForDate = dailyRoute.getRoute().getKm();
-                distinctRatesForDate.add(dailyRoute.getRoute().getPrice());
-                distinctRouteCodesForDate.add(dailyRoute.getRoute().getRouteCode());
-            }
+                BigDecimal totalAmount = dailyRoutes.stream()
+                        .filter(dr -> dr.getRoute().equals(route))
+                        .filter(dr -> dr.getDate().equals(routeDate))
+                        .map(DailyRoute::getAmount)
+                        .filter(Objects::nonNull)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            // check with multiple routes
-//            if (distinctRatesForDate.size() > 1) {
-//                throw new BusinessException(
-//                        "Multiple price rates found for vehicle " + vehicle.getVehicleNumber()
-//                                + " on date " + date + "; cannot determine a single price rate for this date.",
-//                        ErrorCodeConstants.AMBIGUOUS_PRICE_RATE);
-//            }
+                rows.add(
+                        DailyRoutePaymentReceiptRow.builder()
+                                .date(routeDate)
+                                .routeCode(route.getRouteCode())
+                                .routeDistance(route.getKm())
+                                .loadCount(loadCount)
+                                .priceRate(route.getPrice())
+                                .totalAmount(totalAmount)
+                                .build()
+                );
 
-            rows.add(DailyRoutePaymentReceiptRow.builder()
-                    .date(date)
-                    .routeCode(String.join(", ", distinctRouteCodesForDate))
-                    .totalKm(totalKmForDate)
-                    .loadCount(recordsForDate.size())
-                    .priceRate(distinctRatesForDate.first())
-                    .totalAmount(totalAmountForDate)
-                    .paidAmount(paidAmountByDate.getOrDefault(date, BigDecimal.ZERO))
-                    .build());
-        }
+            });
+
+        });
+
         return rows;
+
     }
 
-    /** Unchanged from the previous iteration. */
+    private List<DailyExpensesPaymentReceiptRow> paidRows(
+            Set<LocalDate> uniqueDates,
+            List<VehicleExpense> dailyExpenses
+    ) {
+
+        List<DailyExpensesPaymentReceiptRow> rows = new ArrayList<>();
+
+        uniqueDates.forEach(date -> {
+
+            BigDecimal paidAmountPerDate = dailyExpenses.stream()
+                    .filter(de -> de.getDate().isEqual(date))
+                    .map(VehicleExpense::getExpenses)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            rows.add(DailyExpensesPaymentReceiptRow.builder()
+                    .date(date)
+                    .paidAmount(paidAmountPerDate)
+                    .build()
+            );
+
+        });
+
+        return rows;
+
+    }
+
+    /**
+     * Unchanged from the previous iteration.
+     */
     private BigDecimal resolveLicenceFeeForRange(Vehicle vehicle, LocalDate startDate, LocalDate endDate) {
         List<VehicleLicense> vehicleLicenses =
                 vehicleLicenseRepository.findByVehicleIdAndDateBetweenAndDeletedFalse(vehicle.getId(), startDate, endDate);

@@ -28,9 +28,8 @@ import java.time.LocalDate;
 public class DailyRoutePaymentReceiptRow {
     private LocalDate date;
     private String routeCode;
-    private BigDecimal totalKm;
+    private BigDecimal routeDistance;
     private Integer loadCount;
     private BigDecimal priceRate;
     private BigDecimal totalAmount;
-    private BigDecimal paidAmount;
 }

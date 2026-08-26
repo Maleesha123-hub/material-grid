@@ -1,16 +1,13 @@
 package com.pixelMind.materialGrid.service.impl;
 
-import com.lowagie.text.Document;
-import com.lowagie.text.Element;
+import com.lowagie.text.*;
 import com.lowagie.text.Font;
-import com.lowagie.text.PageSize;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.Phrase;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.pixelMind.materialGrid.constant.ErrorCodeConstants;
 import com.pixelMind.materialGrid.constant.ReportConstants;
+import com.pixelMind.materialGrid.dto.response.DailyExpensesPaymentReceiptRow;
 import com.pixelMind.materialGrid.dto.response.DailyRoutePaymentReceipt;
 import com.pixelMind.materialGrid.dto.response.DailyRoutePaymentReceiptRow;
 import com.pixelMind.materialGrid.exception.BusinessException;
@@ -20,7 +17,7 @@ import com.pixelMind.materialGrid.util.MoneyFormatUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.awt.Color;
+import java.awt.*;
 import java.io.ByteArrayOutputStream;
 
 /**
@@ -63,6 +60,7 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
             addBrandHeader(document);
             addReceiptTitleAndVehicleInfo(document, receipt);
             addDailyRouteDetails(document, receipt);
+            addDailyExpensesDetails(document, receipt);
             addFinancialSummary(document, receipt);
             addSignatureFooter(document);
 
@@ -126,7 +124,7 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
         table.addCell(valueCell);
     }
 
-    private PdfPTable horizontalRule(float thickness) throws Exception {
+    private PdfPTable horizontalRule(float thickness) {
         PdfPTable rule = new PdfPTable(1);
         rule.setWidthPercentage(100);
         PdfPCell cell = new PdfPCell();
@@ -138,13 +136,13 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
         return rule;
     }
 
-    private void addDailyRouteDetails(Document document, DailyRoutePaymentReceipt receipt) throws Exception {
-        document.add(sectionHeading("Daily Route Details"));
+    private void addDailyRouteDetails(Document document, DailyRoutePaymentReceipt receipt) {
+        document.add(sectionHeading("Daily Routes"));
 
-        String[] headers = {"Date", "Route Code", "KM", "Load Count", "Price Rate (Rs.)", "Total Amount (Rs.)", "Paid Amount (Rs.)"};
+        String[] headers = {"Date", "Route Code", "KM", "Load Count", "Price Rate (Rs.)", "Total Amount (Rs.)"};
         PdfPTable table = new PdfPTable(headers.length);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{12, 16, 10, 10, 16, 18, 18});
+        table.setWidths(new float[]{12, 16, 10, 10, 16, 18});
         table.setHeaderRows(1); // repeats the header row across page breaks
         table.setSpacingAfter(8f);
 
@@ -158,12 +156,11 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
 
         for (DailyRoutePaymentReceiptRow row : receipt.getRows()) {
             addCell(table, DateTimeUtil.formatReportDate(row.getDate()), Element.ALIGN_CENTER, TABLE_CELL_FONT);
-            addCell(table, row.getRouteCode(), Element.ALIGN_LEFT, TABLE_CELL_FONT);
-            addCell(table, MoneyFormatUtil.format(row.getTotalKm()), Element.ALIGN_RIGHT, TABLE_CELL_FONT);
+            addCell(table, row.getRouteCode(), Element.ALIGN_CENTER, TABLE_CELL_FONT);
+            addCell(table, MoneyFormatUtil.format(row.getRouteDistance()), Element.ALIGN_RIGHT, TABLE_CELL_FONT);
             addCell(table, String.valueOf(row.getLoadCount()), Element.ALIGN_RIGHT, TABLE_CELL_FONT);
             addCell(table, MoneyFormatUtil.format(row.getPriceRate()), Element.ALIGN_RIGHT, TABLE_CELL_FONT);
             addCell(table, MoneyFormatUtil.format(row.getTotalAmount()), Element.ALIGN_RIGHT, TABLE_CELL_FONT);
-            addCell(table, MoneyFormatUtil.format(row.getPaidAmount()), Element.ALIGN_RIGHT, TABLE_CELL_FONT);
         }
 
         addCell(table, "TOTAL", Element.ALIGN_CENTER, TOTAL_ROW_FONT);
@@ -172,6 +169,35 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
         addCell(table, String.valueOf(receipt.getTotalLoadCount()), Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
         addCell(table, "-", Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
         addCell(table, MoneyFormatUtil.format(receipt.getTotalAmount()), Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
+
+        document.add(table);
+    }
+
+    private void addDailyExpensesDetails(Document document, DailyRoutePaymentReceipt receipt) {
+        document.add(sectionHeading("Daily Expenses"));
+
+        String[] headers = {"Date", "Total Paid Amount (Rs.)"};
+        PdfPTable table = new PdfPTable(headers.length);
+        table.setWidthPercentage(50);
+        table.setWidths(new float[]{4, 10});
+        table.setHeaderRows(1); // repeats the header row across page breaks
+        table.setSpacingAfter(8f);
+        table.setHorizontalAlignment(Element.ALIGN_LEFT);
+
+        for (String h : headers) {
+            PdfPCell cell = new PdfPCell(new Phrase(h, TABLE_HEADER_FONT));
+            cell.setBackgroundColor(HEADER_BG);
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setPadding(4.5f);
+            table.addCell(cell);
+        }
+
+        for (DailyExpensesPaymentReceiptRow row : receipt.getPaidRows()) {
+            addCell(table, DateTimeUtil.formatReportDate(row.getDate()), Element.ALIGN_CENTER, TABLE_CELL_FONT);
+            addCell(table, MoneyFormatUtil.format(row.getPaidAmount()), Element.ALIGN_RIGHT, TABLE_CELL_FONT);
+        }
+
+        addCell(table, "TOTAL", Element.ALIGN_CENTER, TOTAL_ROW_FONT);
         addCell(table, MoneyFormatUtil.format(receipt.getTotalPaidAmount()), Element.ALIGN_RIGHT, TOTAL_ROW_FONT);
 
         document.add(table);
@@ -185,11 +211,10 @@ public class DailyRoutePdfServiceImpl implements DailyRoutePdfService {
         table.setHorizontalAlignment(Element.ALIGN_LEFT);
         table.setWidths(new float[]{45, 55});
 
-        addSummaryRow(table, "Total Load Count", String.valueOf(receipt.getTotalLoadCount()), false);
-        //addSummaryRow(table, "Total KM", MoneyFormatUtil.format(receipt.getTotalKm()), false);
-        addSummaryRow(table, "Price Rate",
-                receipt.isPriceRateVaries() ? "Varies across period" : MoneyFormatUtil.format(receipt.getPriceRate()),
-                false);
+//        addSummaryRow(table, "Total Load Count", String.valueOf(receipt.getTotalLoadCount()), false);
+//        addSummaryRow(table, "Price Rate",
+//                receipt.isPriceRateVaries() ? "Varies across period" : MoneyFormatUtil.format(receipt.getPriceRate()),
+//                false);
         addSummaryRow(table, "Total Amount", ReportConstants.CURRENCY_PREFIX + MoneyFormatUtil.format(receipt.getTotalAmount()), false);
         addSummaryRow(table, "Total Paid Amount", ReportConstants.CURRENCY_PREFIX + MoneyFormatUtil.format(receipt.getTotalPaidAmount()), false);
         addSummaryRow(table, "Licence Fee", ReportConstants.CURRENCY_PREFIX + MoneyFormatUtil.format(receipt.getLicenceFee()), false);
