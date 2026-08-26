@@ -81,7 +81,18 @@ public class RouteServiceImpl implements RouteService {
     @Override
     @Transactional
     public RouteResponse updateRoute(Long id, RouteUpdateRequest request) {
+
         Route route = findOrThrow(id);
+
+        if (dailyRouteRepository.existsByRouteIdAndDeletedFalse(route.getId())) {
+
+            throw new BusinessException(
+                    "Cannot update route price or distance with existing daily route records. "
+                            + "Daily routes are historical records and this route must be preserved for referential integrity.",
+                    ErrorCodeConstants.BUSINESS_RULE_VIOLATION);
+
+        }
+
         route.setStartLocation(request.getStartLocation());
         route.setEndLocation(request.getEndLocation());
         route.setKm(request.getKm());
