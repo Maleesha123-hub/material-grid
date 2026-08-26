@@ -75,7 +75,7 @@ public class LicenseServiceImpl implements LicenseService {
     @Transactional
     public LicenseResponse updateLicense(Long id, LicenseUpdateRequest request) {
         validateDateRange(request.getStartDate(), request.getEndDate());
-        validateNoDateOverlap(id, request.getStartDate(), request.getEndDate());
+        // validateNoDateOverlap(id, request.getStartDate(), request.getEndDate());
         License license = findOrThrow(id);
 
         license.setStartDate(request.getStartDate());
