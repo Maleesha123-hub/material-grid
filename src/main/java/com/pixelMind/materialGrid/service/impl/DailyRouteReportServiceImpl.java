@@ -166,12 +166,12 @@ public class DailyRouteReportServiceImpl implements DailyRouteReportService {
             }
 
             // check with multiple routes
-            if (distinctRatesForDate.size() > 1) {
-                throw new BusinessException(
-                        "Multiple price rates found for vehicle " + vehicle.getVehicleNumber()
-                                + " on date " + date + "; cannot determine a single price rate for this date.",
-                        ErrorCodeConstants.AMBIGUOUS_PRICE_RATE);
-            }
+//            if (distinctRatesForDate.size() > 1) {
+//                throw new BusinessException(
+//                        "Multiple price rates found for vehicle " + vehicle.getVehicleNumber()
+//                                + " on date " + date + "; cannot determine a single price rate for this date.",
+//                        ErrorCodeConstants.AMBIGUOUS_PRICE_RATE);
+//            }
 
             rows.add(DailyRoutePaymentReceiptRow.builder()
                     .date(date)
