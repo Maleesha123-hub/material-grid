@@ -46,16 +46,19 @@ public class DailyRouteController {
         return ResponseEntity.ok(ApiResponse.success(result.getMessage(), result));
     }
 
-    @Operation(summary = "Search daily routes (paginated; filter by date, vehicleId, routeId, priceRateId)")
+    @Operation(summary = "Search daily routes (paginated; filter by date, createdDate, billNumber, vehicleId, routeId, fileHistoryId)")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<DailyRouteResponse>>> search(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdDate,
+            @RequestParam(required = false) String billNumber,
             @RequestParam(required = false) Long vehicleId,
             @RequestParam(required = false) Long routeId,
+            @RequestParam(required = false) Long fileHistoryId,
             @PageableDefault(size = 20, sort = "id") Pageable pageable) {
 
         PageResponse<DailyRouteResponse> page =
-                new PageResponse<>(dailyRouteService.search(date, vehicleId, routeId, pageable));
+                new PageResponse<>(dailyRouteService.search(date, createdDate, billNumber, vehicleId, routeId, fileHistoryId, pageable));
 
         return ResponseEntity.ok(ApiResponse.success("Daily routes retrieved successfully", page));
     }

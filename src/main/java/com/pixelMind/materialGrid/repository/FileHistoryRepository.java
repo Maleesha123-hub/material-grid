@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface FileHistoryRepository extends JpaRepository<FileHistory, Long> {
 
@@ -33,4 +34,15 @@ public interface FileHistoryRepository extends JpaRepository<FileHistory, Long> 
             @Param("fromDate") LocalDateTime fromDate,
             @Param("toDate") LocalDateTime toDate,
             Pageable pageable);
+
+    @Query("""
+            select f from FileHistory f
+            where f.deleted = false
+              and (:fileType is null or f.fileType = :fileType)
+              and (:fileName is null or lower(f.fileName) like lower(concat('%', :fileName, '%')))
+            order by f.uploadedDate desc
+            """)
+    List<FileHistory> findByFileTypeAndFileName(
+            @Param("fileType") FileType fileType,
+            @Param("fileName") String fileName);
 }

@@ -7,6 +7,8 @@ import com.pixelMind.materialGrid.entity.enums.FileType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
+
 public interface FileHistoryService {
 
     /**
@@ -25,6 +27,8 @@ public interface FileHistoryService {
     FileHistory createFileHistory(String fileName, FileType fileType);
 
     Page<FileHistoryResponse> search(FileHistoryFilterRequest filter, Pageable pageable);
+
+    List<FileHistoryResponse> getFilesByFileType(FileType fileType, String fileName);
 
     FileHistoryResponse getById(Long id);
 }

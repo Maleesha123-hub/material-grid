@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * priceRateId is never accepted from the client (see
@@ -84,12 +85,26 @@ public class DailyRouteServiceImpl implements DailyRouteService {
     @Transactional(readOnly = true)
     public Page<DailyRouteResponse> search(
             LocalDate date,
+            LocalDate createdDate,
+            String billNumber,
             Long vehicleId,
             Long routeId,
+            Long fileHistoryId,
             Pageable pageable
     ) {
+        LocalDateTime createdDateFrom = createdDate != null ? createdDate.atStartOfDay() : null;
+        LocalDateTime createdDateTo = createdDate != null ? createdDate.plusDays(1).atStartOfDay() : null;
+        String cleanBillNumber = (billNumber != null && !billNumber.isBlank()) ? billNumber.trim() : null;
 
-        return dailyRouteRepository.search(date, vehicleId, routeId, pageable)
+        return dailyRouteRepository.search(
+                        date,
+                        createdDateFrom,
+                        createdDateTo,
+                        cleanBillNumber,
+                        vehicleId,
+                        routeId,
+                        fileHistoryId,
+                        pageable)
                 .map(dailyRouteMapper::toResponse);
     }
 

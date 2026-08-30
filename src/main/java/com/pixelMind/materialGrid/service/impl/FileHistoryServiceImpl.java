@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Centralized owner of all File History logic - the three Excel import
@@ -93,6 +94,15 @@ public class FileHistoryServiceImpl implements FileHistoryService {
         return fileHistoryRepository
                 .search(filter.getFileName(), filter.getFileType(), filter.getUploadedBy(), from, to, pageable)
                 .map(fileHistoryMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FileHistoryResponse> getFilesByFileType(FileType fileType, String fileName) {
+        String cleanFileName = (fileName != null && !fileName.isBlank()) ? fileName.trim() : null;
+        return fileHistoryRepository.findByFileTypeAndFileName(fileType, cleanFileName).stream()
+                .map(fileHistoryMapper::toResponse)
+                .toList();
     }
 
     @Override

@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Read-only by design - File History records are created exclusively as a
@@ -45,14 +46,26 @@ public class FileHistoryController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @PageableDefault(size = 20, sort = "id") Pageable pageable) {
-        FileHistoryFilterRequest filter = new FileHistoryFilterRequest(fileName, fileType, uploadedBy, fromDate, toDate);
+        FileHistoryFilterRequest filter = new FileHistoryFilterRequest(fileName, fileType, uploadedBy, fromDate,
+                toDate);
         PageResponse<FileHistoryResponse> page = new PageResponse<>(fileHistoryService.search(filter, pageable));
         return ResponseEntity.ok(ApiResponse.success("File history retrieved successfully", page));
+    }
+
+    @Operation(summary = "Get active file history records (filter by fileType, searchable with LIKE by fileName)")
+    @GetMapping("/by-file-type")
+    public ResponseEntity<ApiResponse<List<FileHistoryResponse>>> getFilesByFileType(
+            @RequestParam(required = false) FileType fileType,
+            @RequestParam(required = false) String fileName) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "File history retrieved successfully",
+                fileHistoryService.getFilesByFileType(fileType, fileName)));
     }
 
     @Operation(summary = "Get a file history record by id")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<FileHistoryResponse>> getOne(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success("File history retrieved successfully", fileHistoryService.getById(id)));
+        return ResponseEntity
+                .ok(ApiResponse.success("File history retrieved successfully", fileHistoryService.getById(id)));
     }
 }

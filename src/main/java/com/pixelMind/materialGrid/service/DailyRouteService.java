@@ -14,7 +14,14 @@ public interface DailyRouteService {
 
     DailyRouteResponse getDailyRoute(Long id);
 
-    Page<DailyRouteResponse> search(LocalDate date, Long vehicleId, Long routeId, Pageable pageable);
+    Page<DailyRouteResponse> search(
+            LocalDate date,
+            LocalDate createdDate,
+            String billNumber,
+            Long vehicleId,
+            Long routeId,
+            Long fileHistoryId,
+            Pageable pageable);
 
     DailyRouteResponse updateDailyRoute(Long id, DailyRouteUpdateRequest request);
 

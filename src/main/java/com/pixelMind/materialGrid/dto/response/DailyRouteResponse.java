@@ -19,6 +19,8 @@ public class DailyRouteResponse {
     private BigDecimal amount;
     private String checkBy;
     private String bilNumber;
+    private Long fileHistoryId;
+    private FileHistoryResponse fileHistory;
     private String createdBy;
     private LocalDateTime createdDate;
     private String modifiedBy;
