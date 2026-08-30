@@ -40,7 +40,7 @@ public class VehicleLicenseController {
                 .body(ApiResponse.success("Vehicle license created successfully", vehicleLicenseService.createVehicleLicense(request)));
     }
 
-    @Operation(summary = "Bulk-upload vehicle licenses from an Excel file (Date | Vehicle Number | License Code). All-or-nothing; rejects a filename+type already uploaded before, and any (vehicle, license, date) already on record.")
+    @Operation(summary = "Bulk-upload vehicle licenses from an Excel file (Vehicle Number | License Code). All-or-nothing; rejects a filename+type already uploaded before, and any (vehicle, license) already on record.")
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<BulkUploadResponse>> upload(@RequestParam("file") MultipartFile file) {
         BulkUploadResponse result = vehicleLicenseImportService.importFromExcel(file);

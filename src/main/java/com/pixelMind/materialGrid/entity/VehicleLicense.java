@@ -46,7 +46,7 @@ public class VehicleLicense extends BaseAuditableEntity {
     @JoinColumn(name = "license_id", nullable = false)
     private License license;
 
-    @Column(name = "assignment_date", nullable = false)
+    @Column(name = "assignment_date", nullable = true)
     private LocalDate date;
 
     @Enumerated(EnumType.STRING)

@@ -60,10 +60,10 @@ public class VehicleLicenseImportServiceImpl implements VehicleLicenseImportServ
     private final VehicleLicenseRepository vehicleLicenseRepository;
     private final FileHistoryService fileHistoryService;
 
-    private record RawRow(int rowNumber, LocalDate date, String vehicleNumber, String licenseCode) {
+    private record RawRow(int rowNumber, String vehicleNumber, String licenseCode) {
     }
 
-    private record ResolvedRow(int rowNumber, LocalDate date, Vehicle vehicle, License license) {
+    private record ResolvedRow(int rowNumber, Vehicle vehicle, License license) {
     }
 
     @Override
@@ -78,7 +78,6 @@ public class VehicleLicenseImportServiceImpl implements VehicleLicenseImportServ
             Map<String, Integer> headerIndex = ExcelUtil.readHeaderIndex(sheet);
             ExcelUtil.requireHeaders(headerIndex, ExcelConstants.VEHICLE_LICENSE_HEADERS);
 
-            int dateCol = ExcelUtil.columnOf(headerIndex, "Date");
             int vehicleCol = ExcelUtil.columnOf(headerIndex, "Vehicle Number");
             int licenseCol = ExcelUtil.columnOf(headerIndex, "License Code");
 
@@ -92,12 +91,6 @@ public class VehicleLicenseImportServiceImpl implements VehicleLicenseImportServ
                 }
                 int rowNumber = r + 1;
 
-                Optional<LocalDate> date = ExcelUtil.readDate(row, dateCol);
-                if (date.isEmpty()) {
-                    errors.add(error(rowNumber, "Date", ExcelUtil.readString(row, dateCol),
-                            "Date is required and must be a valid date"));
-                }
-
                 String vehicleNumber = ExcelUtil.readString(row, vehicleCol).toUpperCase();
                 if (vehicleNumber.isBlank()) {
                     errors.add(error(rowNumber, "Vehicle Number", null, "Vehicle Number is required"));
@@ -108,7 +101,7 @@ public class VehicleLicenseImportServiceImpl implements VehicleLicenseImportServ
                     errors.add(error(rowNumber, "License Code", null, "License Code is required"));
                 }
 
-                rawRows.add(new RawRow(rowNumber, date.orElse(null), vehicleNumber, licenseCode));
+                rawRows.add(new RawRow(rowNumber, vehicleNumber, licenseCode));
             }
 
             if (rawRows.isEmpty()) {
@@ -122,39 +115,32 @@ public class VehicleLicenseImportServiceImpl implements VehicleLicenseImportServ
             Map<String, Vehicle> vehicleByNumber = vehicleRepository.findByVehicleNumberInAndDeletedFalse(distinctVehicleNumbers).stream()
                     .collect(Collectors.toMap(Vehicle::getVehicleNumber, v -> v));
 
+            Set<String> distinctLicenseCodes = rawRows.stream()
+                    .map(RawRow::licenseCode).filter(l -> !l.isBlank()).collect(Collectors.toSet());
+            Map<String, License> licenseByCode = licenseRepository.findByLicenseCodeInAndDeletedFalse(distinctLicenseCodes).stream()
+                    .collect(Collectors.toMap(License::getLicenseCode, l -> l));
+
             List<ResolvedRow> resolved = new ArrayList<>();
             for (RawRow raw : rawRows) {
-                License license;
-
-                if (raw.vehicleNumber().isBlank() || raw.licenseCode.isBlank()) {
+                if (raw.vehicleNumber().isBlank() || raw.licenseCode().isBlank()) {
                     continue;
                 }
 
                 Vehicle vehicle = vehicleByNumber.get(raw.vehicleNumber());
-                    if (vehicle == null) {
-                        errors.add(error(raw.rowNumber(), "Vehicle Number", raw.vehicleNumber(),
-                                "Vehicle number '" + raw.vehicleNumber() + "' does not exist"));
-                        continue;
-                    }
-
-                Map<String, License> licenseByCode = licenseRepository.findByDateRange(raw.date, raw.date).stream().collect(Collectors.toMap(License::getLicenseCode, l -> l));
-
-                if (licenseByCode.isEmpty()) {
-                    errors.add(error(raw.rowNumber(), "Date", raw.date().toString(),
-                            "No valid license found for date " + raw.date()));
-                    continue;
-                } else if (!licenseByCode.containsKey(raw.licenseCode)) {
-                    errors.add(error(raw.rowNumber(), "Date", raw.date().toString(),
-                            "No valid license found for date " + raw.date()));
-                    continue;
-                } else {
-                    license = licenseByCode.get(raw.licenseCode);
-                }
-
-                if (raw.date() == null) {
+                if (vehicle == null) {
+                    errors.add(error(raw.rowNumber(), "Vehicle Number", raw.vehicleNumber(),
+                            "Vehicle number '" + raw.vehicleNumber() + "' does not exist"));
                     continue;
                 }
-                resolved.add(new ResolvedRow(raw.rowNumber(), raw.date(), vehicle, license));
+
+                License license = licenseByCode.get(raw.licenseCode());
+                if (license == null) {
+                    errors.add(error(raw.rowNumber(), "License Code", raw.licenseCode(),
+                            "License code '" + raw.licenseCode() + "' does not exist"));
+                    continue;
+                }
+
+                resolved.add(new ResolvedRow(raw.rowNumber(), vehicle, license));
             }
 
             // --- Duplicate detection WITHIN this file ---
@@ -194,12 +180,12 @@ public class VehicleLicenseImportServiceImpl implements VehicleLicenseImportServ
             FileHistory fileHistory = fileHistoryService.createFileHistory(fileName, FileType.VEHICLE_LICENSE);
             String actor = SecurityUtil.getCurrentUsername();
 
-            List<VehicleLicense> entities = (List<VehicleLicense>) resolved.stream()
-                    .map(r -> VehicleLicense.builder()
+            List<VehicleLicense> entities = resolved.stream()
+                    .<VehicleLicense>map(r -> VehicleLicense.builder()
                             .vehicle(r.vehicle())
                             .license(r.license())
-                            .date(r.date())
-                            .status(VehicleLicenseStatus.ACTIVE) // see class Javadoc
+                            .date(null)
+                            .status(VehicleLicenseStatus.ACTIVE)
                             .fileHistory(fileHistory)
                             .createdBy(actor)
                             .modifiedBy(actor)
