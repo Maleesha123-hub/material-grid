@@ -48,6 +48,8 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
             Long vehicleId,
             LocalDate date);
 
+    List<DailyRoute> findByVehicleIdAndDeletedFalse(Long vehicleId);
+
     @Query("""
             select d from DailyRoute d
             join fetch d.route
