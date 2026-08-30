@@ -46,13 +46,25 @@ public class VehicleExpenseController {
         return ResponseEntity.ok(ApiResponse.success(result.getMessage(), result));
     }
 
-    @Operation(summary = "List vehicle expenses (paginated, filterable by date range)")
+    @Operation(summary = "List vehicle expenses (paginated; filter by date/expenseDate, createdDate, vehicleId, fileHistoryId)")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<VehicleExpenseResponse>>> getAll(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expenseDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdDate,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) Long fileHistoryId,
             @PageableDefault(size = 20, sort = "id") Pageable pageable) {
-        PageResponse<VehicleExpenseResponse> page = new PageResponse<>(vehicleExpenseService.getVehicleExpenses(from, to, pageable));
+        LocalDate resolvedDate = date != null ? date : expenseDate;
+        if (resolvedDate == null && from != null && to != null) {
+            PageResponse<VehicleExpenseResponse> page =
+                    new PageResponse<>(vehicleExpenseService.getVehicleExpenses(from, to, pageable));
+            return ResponseEntity.ok(ApiResponse.success("Vehicle expenses retrieved successfully", page));
+        }
+        PageResponse<VehicleExpenseResponse> page =
+                new PageResponse<>(vehicleExpenseService.search(resolvedDate, createdDate, vehicleId, fileHistoryId, pageable));
         return ResponseEntity.ok(ApiResponse.success("Vehicle expenses retrieved successfully", page));
     }
 

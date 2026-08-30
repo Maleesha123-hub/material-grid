@@ -4,18 +4,13 @@ import com.pixelMind.materialGrid.constant.ErrorCodeConstants;
 import com.pixelMind.materialGrid.dto.request.DailyRouteCreateRequest;
 import com.pixelMind.materialGrid.dto.request.DailyRouteUpdateRequest;
 import com.pixelMind.materialGrid.dto.response.DailyRouteResponse;
-import com.pixelMind.materialGrid.entity.DailyRoute;
-import com.pixelMind.materialGrid.entity.PriceRate;
-import com.pixelMind.materialGrid.entity.Route;
-import com.pixelMind.materialGrid.entity.Vehicle;
+import com.pixelMind.materialGrid.entity.*;
 import com.pixelMind.materialGrid.entity.enums.PriceRateStatus;
 import com.pixelMind.materialGrid.exception.BusinessException;
+import com.pixelMind.materialGrid.exception.ExcelValidationException;
 import com.pixelMind.materialGrid.exception.ResourceNotFoundException;
 import com.pixelMind.materialGrid.mapper.DailyRouteMapper;
-import com.pixelMind.materialGrid.repository.DailyRouteRepository;
-import com.pixelMind.materialGrid.repository.PriceRateRepository;
-import com.pixelMind.materialGrid.repository.RouteRepository;
-import com.pixelMind.materialGrid.repository.VehicleRepository;
+import com.pixelMind.materialGrid.repository.*;
 import com.pixelMind.materialGrid.service.DailyRouteService;
 import com.pixelMind.materialGrid.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * priceRateId is never accepted from the client (see
@@ -43,6 +41,8 @@ import java.time.LocalDate;
 public class DailyRouteServiceImpl implements DailyRouteService {
 
     private final DailyRouteRepository dailyRouteRepository;
+    private final LicenseRepository licenseRepository;
+    private final VehicleLicenseRepository vehicleLicenseRepository;
     private final VehicleRepository vehicleRepository;
     private final RouteRepository routeRepository;
     private final PriceRateRepository priceRateRepository;
@@ -62,11 +62,58 @@ public class DailyRouteServiceImpl implements DailyRouteService {
                 .vehicle(vehicle)
                 .route(route)
                 .amount(amount)
-                .checkBy(request.getCheckBy())
                 .billNumber(request.getBillNumber())
                 .createdBy(actor)
                 .modifiedBy(actor)
                 .build();
+
+        // Validate vehicle license
+        if (!licenseRepository.existsActiveLicenseByDate(dailyRoute.getDate())) { // TODO: this impl is also exists in Daily route create / update
+
+            throw new BusinessException(
+                    "Valid license does not exists for the daily route for " +
+                            dailyRoute.getVehicle().getVehicleNumber() + "|" + dailyRoute.getDate(), "400"
+            );
+
+        } else {
+
+            List<License> licenses = licenseRepository.findAllActiveLicensesByDate(dailyRoute.getDate());
+            List<VehicleLicense> vehicleLicenses = vehicleLicenseRepository.findByVehicleAndLicenseInAndDeletedFalse(dailyRoute.getVehicle(), licenses);
+
+            if (vehicleLicenses.isEmpty()) {
+
+                throw new BusinessException(
+                        "Vehicle license does not exists for the vehicle, Please assign a vehicle license for the vehicle : " +
+                                dailyRoute.getVehicle().getVehicleNumber(), "400"
+                );
+
+            } else if (vehicleLicenses.size() > 1) {
+
+                throw new BusinessException(
+                        "Multiple vehicle license assigned for the vehicle : " +
+                                dailyRoute.getVehicle().getVehicleNumber(), "400"
+                );
+
+            } else if (vehicleLicenses.getFirst().getDate() == null) {
+
+                VehicleLicense vehicleLicense = vehicleLicenses.getFirst();
+                vehicleLicense.setDate(dailyRoute.getDate());
+
+                try {
+
+                    vehicleLicenseRepository.save(vehicleLicense);
+
+                } catch (Exception ex) {
+
+                    log.error("Daily route upload validation failed : {}", ex.getMessage(), ex);
+
+                    throw new ExcelValidationException("Vehicle license save failed : " + ex.getMessage(), new ArrayList<>(), 0);
+
+                }
+
+            }
+
+        }
 
         DailyRoute saved = dailyRouteRepository.save(dailyRoute);
         log.info("DailyRoute created: id={}, vehicleId={}, routeId={}, amount={}, by={}",
@@ -84,12 +131,26 @@ public class DailyRouteServiceImpl implements DailyRouteService {
     @Transactional(readOnly = true)
     public Page<DailyRouteResponse> search(
             LocalDate date,
+            LocalDate createdDate,
+            String billNumber,
             Long vehicleId,
             Long routeId,
+            Long fileHistoryId,
             Pageable pageable
     ) {
+        LocalDateTime createdDateFrom = createdDate != null ? createdDate.atStartOfDay() : null;
+        LocalDateTime createdDateTo = createdDate != null ? createdDate.plusDays(1).atStartOfDay() : null;
+        String cleanBillNumber = (billNumber != null && !billNumber.isBlank()) ? billNumber.trim() : null;
 
-        return dailyRouteRepository.search(date, vehicleId, routeId, pageable)
+        return dailyRouteRepository.search(
+                        date,
+                        createdDateFrom,
+                        createdDateTo,
+                        cleanBillNumber,
+                        vehicleId,
+                        routeId,
+                        fileHistoryId,
+                        pageable)
                 .map(dailyRouteMapper::toResponse);
     }
 
@@ -97,14 +158,12 @@ public class DailyRouteServiceImpl implements DailyRouteService {
     @Transactional
     public DailyRouteResponse updateDailyRoute(Long id, DailyRouteUpdateRequest request) {
         DailyRoute dailyRoute = findOrThrow(id);
-        Vehicle vehicle = findVehicleOrThrow(request.getVehicleId());
-        Route route = findRouteOrThrow(request.getRouteId());
+//        Vehicle vehicle = findVehicleOrThrow(request.getVehicleId());
 
-        dailyRoute.setDate(request.getDate());
-        dailyRoute.setVehicle(vehicle);
-        dailyRoute.setRoute(route);
-        dailyRoute.setAmount(computeAmount(vehicle, route));
-        dailyRoute.setCheckBy(request.getCheckBy());
+//        dailyRoute.setDate(request.getDate());
+//        dailyRoute.setVehicle(vehicle);
+//        dailyRoute.setRoute(route);
+//        dailyRoute.setAmount(computeAmount(vehicle, dailyRoute.getRoute()));
         dailyRoute.setBillNumber(request.getBillNumber());
         dailyRoute.setModifiedBy(SecurityUtil.getCurrentUsername());
 

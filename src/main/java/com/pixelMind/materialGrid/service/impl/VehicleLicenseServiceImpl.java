@@ -8,8 +8,10 @@ import com.pixelMind.materialGrid.entity.License;
 import com.pixelMind.materialGrid.entity.Vehicle;
 import com.pixelMind.materialGrid.entity.VehicleLicense;
 import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
+import com.pixelMind.materialGrid.exception.BusinessException;
 import com.pixelMind.materialGrid.exception.ResourceNotFoundException;
 import com.pixelMind.materialGrid.mapper.VehicleLicenseMapper;
+import com.pixelMind.materialGrid.repository.DailyRouteRepository;
 import com.pixelMind.materialGrid.repository.LicenseRepository;
 import com.pixelMind.materialGrid.repository.VehicleLicenseRepository;
 import com.pixelMind.materialGrid.repository.VehicleRepository;
@@ -21,6 +23,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Business assumption made explicit (per the spec's request to justify the
@@ -42,27 +49,44 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class VehicleLicenseServiceImpl implements VehicleLicenseService {
 
+    // Repositories
     private final VehicleLicenseRepository vehicleLicenseRepository;
     private final VehicleRepository vehicleRepository;
     private final LicenseRepository licenseRepository;
+    private final DailyRouteRepository dailyRouteRepository;
+
+    // Mappers
     private final VehicleLicenseMapper vehicleLicenseMapper;
 
     @Override
     @Transactional
     public VehicleLicenseResponse createVehicleLicense(VehicleLicenseCreateRequest request) {
+
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Vehicle not found with id: " + request.getVehicleId(), ErrorCodeConstants.VEHICLE_NOT_FOUND));
+
         License license = licenseRepository.findById(request.getLicenseId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "License not found with id: " + request.getLicenseId(), ErrorCodeConstants.LICENSE_NOT_FOUND));
+
+        List<VehicleLicense> existsVehicleLicenses = vehicleLicenseRepository.findByVehicleAndLicenseInAndDeletedFalse(
+                vehicle, Collections.singletonList(license)
+        );
+
+        if (!existsVehicleLicenses.isEmpty()) {
+            throw new BusinessException("Vehicle license " +
+                    license.getLicenseCode() +
+                    " is already assigned to " +
+                    vehicle.getVehicleNumber(), "400");
+        }
 
         String actor = SecurityUtil.getCurrentUsername();
         VehicleLicense vehicleLicense = VehicleLicense.builder()
                 .vehicle(vehicle)
                 .license(license)
-                .date(request.getDate())
-                .status(request.getStatus())
+                .date(null)
+                .status(VehicleLicenseStatus.ACTIVE)
                 .createdBy(actor)
                 .modifiedBy(actor)
                 .build();
@@ -83,32 +107,69 @@ public class VehicleLicenseServiceImpl implements VehicleLicenseService {
     @Transactional(readOnly = true)
     public Page<VehicleLicenseResponse> getVehicleLicenses(VehicleLicenseStatus status, Pageable pageable) {
         if (status != null) {
-            return vehicleLicenseRepository.findByStatusAndDeletedFalse(status, pageable).map(vehicleLicenseMapper::toResponse);
+            return vehicleLicenseRepository.findByStatusAndDeletedFalse(status, pageable)
+                    .map(vehicleLicenseMapper::toResponse);
         }
         return vehicleLicenseRepository.findAll(pageable).map(vehicleLicenseMapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
+    public Page<VehicleLicenseResponse> search(
+            Long licenseId,
+            Long vehicleId,
+            LocalDate date,
+            LocalDate createdDate,
+            VehicleLicenseStatus status,
+            Long fileHistoryId,
+            Pageable pageable) {
+        LocalDateTime createdDateFrom = createdDate != null ? createdDate.atStartOfDay() : null;
+        LocalDateTime createdDateTo = createdDate != null ? createdDate.plusDays(1).atStartOfDay() : null;
+
+        return vehicleLicenseRepository.search(
+                        licenseId,
+                        vehicleId,
+                        date,
+                        createdDateFrom,
+                        createdDateTo,
+                        status,
+                        fileHistoryId,
+                        pageable)
+                .map(vehicleLicenseMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Page<VehicleLicenseResponse> getByVehicle(Long vehicleId, Pageable pageable) {
-        return vehicleLicenseRepository.findByVehicleIdAndDeletedFalse(vehicleId, pageable).map(vehicleLicenseMapper::toResponse);
+        return vehicleLicenseRepository.findByVehicleIdAndDeletedFalse(vehicleId, pageable)
+                .map(vehicleLicenseMapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<VehicleLicenseResponse> getByLicense(Long licenseId, Pageable pageable) {
-        return vehicleLicenseRepository.findByLicenseIdAndDeletedFalse(licenseId, pageable).map(vehicleLicenseMapper::toResponse);
+        return vehicleLicenseRepository.findByLicenseIdAndDeletedFalse(licenseId, pageable)
+                .map(vehicleLicenseMapper::toResponse);
     }
 
     @Override
     @Transactional
     public VehicleLicenseResponse updateVehicleLicense(Long id, VehicleLicenseUpdateRequest request) {
+
         VehicleLicense vehicleLicense = findOrThrow(id);
-        vehicleLicense.setDate(request.getDate());
-        vehicleLicense.setStatus(request.getStatus());
+
+        Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Vehicle not found with id: " + request.getVehicleId(), ErrorCodeConstants.VEHICLE_NOT_FOUND));
+
+        License license = licenseRepository.findById(request.getLicenseId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "License not found with id: " + request.getLicenseId(), ErrorCodeConstants.LICENSE_NOT_FOUND));
+
+        vehicleLicense.setVehicle(vehicle);
+        vehicleLicense.setLicense(license);
+        vehicleLicense.setStatus(VehicleLicenseStatus.ACTIVE);
         vehicleLicense.setModifiedBy(SecurityUtil.getCurrentUsername());
-        // vehicle/license associations are immutable on update - see
-        // VehicleLicenseUpdateRequest.
 
         VehicleLicense saved = vehicleLicenseRepository.save(vehicleLicense);
         log.info("VehicleLicense updated: id={}, by={}", saved.getId(), vehicleLicense.getModifiedBy());

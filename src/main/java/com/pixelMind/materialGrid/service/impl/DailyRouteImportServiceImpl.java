@@ -1,27 +1,12 @@
 package com.pixelMind.materialGrid.service.impl;
 
-import com.pixelMind.materialGrid.constant.ErrorCodeConstants;
 import com.pixelMind.materialGrid.constant.ExcelConstants;
 import com.pixelMind.materialGrid.dto.response.BulkUploadResponse;
 import com.pixelMind.materialGrid.dto.response.ExcelValidationError;
-import com.pixelMind.materialGrid.entity.DailyRoute;
-import com.pixelMind.materialGrid.entity.FileHistory;
-import com.pixelMind.materialGrid.entity.License;
-import com.pixelMind.materialGrid.entity.PriceRate;
-import com.pixelMind.materialGrid.entity.Route;
-import com.pixelMind.materialGrid.entity.Vehicle;
-import com.pixelMind.materialGrid.entity.VehicleLicense;
+import com.pixelMind.materialGrid.entity.*;
 import com.pixelMind.materialGrid.entity.enums.FileType;
-import com.pixelMind.materialGrid.entity.enums.PriceRateStatus;
-import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
-import com.pixelMind.materialGrid.exception.BusinessException;
 import com.pixelMind.materialGrid.exception.ExcelValidationException;
-import com.pixelMind.materialGrid.repository.DailyRouteRepository;
-import com.pixelMind.materialGrid.repository.LicenseRepository;
-import com.pixelMind.materialGrid.repository.PriceRateRepository;
-import com.pixelMind.materialGrid.repository.RouteRepository;
-import com.pixelMind.materialGrid.repository.VehicleLicenseRepository;
-import com.pixelMind.materialGrid.repository.VehicleRepository;
+import com.pixelMind.materialGrid.repository.*;
 import com.pixelMind.materialGrid.service.DailyRouteImportService;
 import com.pixelMind.materialGrid.service.FileHistoryService;
 import com.pixelMind.materialGrid.util.ExcelUtil;
@@ -63,10 +48,10 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
     private final PriceRateRepository priceRateRepository;
     private final FileHistoryService fileHistoryService;
 
-    private record RawRow(int rowNumber, LocalDate date, String vehicleNumber, String bilNumber, String routeCode, String checkBy) {
+    private record RawRow(int rowNumber, LocalDate date, String vehicleNumber, String bilNumber, String routeCode) {
     }
 
-    private record ResolvedRow(LocalDate date, Vehicle vehicle, String bilNumber, Route route, String checkBy) {
+    private record ResolvedRow(int rowNumber, LocalDate date, Vehicle vehicle, String bilNumber, Route route) {
     }
 
     @Override
@@ -85,7 +70,6 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
             int vehicleCol = ExcelUtil.columnOf(headerIndex, "Vehicle Number");
             int bilNumberCol = ExcelUtil.columnOf(headerIndex, "Bil Number");
             int routeCol = ExcelUtil.columnOf(headerIndex, "Route Code");
-            int checkByCol = ExcelUtil.columnOf(headerIndex, "Check By");
 
             List<ExcelValidationError> errors = new ArrayList<>();
             List<RawRow> rawRows = new ArrayList<>();
@@ -119,12 +103,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                     errors.add(error(rowNumber, "Route Code", null, "Route code is required"));
                 }
 
-                String checkBy = ExcelUtil.readString(row, checkByCol);
-                if (checkBy.isBlank()) {
-                    errors.add(error(rowNumber, "Check By", null, "Check By is required"));
-                }
-
-                rawRows.add(new RawRow(rowNumber, date.orElse(null), vehicleNumber, bilNumber, routeCode, checkBy));
+                rawRows.add(new RawRow(rowNumber, date.orElse(null), vehicleNumber, bilNumber, routeCode));
             }
 
             if (rawRows.isEmpty()) {
@@ -153,51 +132,27 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
 
             List<ResolvedRow> resolved = new ArrayList<>();
             for (RawRow raw : rawRows) {
-//                License license;
 
                 Vehicle vehicle = vehicleByNumber.get(raw.vehicleNumber());
-                    if (vehicle == null) {
-                        errors.add(error(raw.rowNumber(), "Vehicle Number", raw.vehicleNumber(),
-                                "Vehicle number '" + raw.vehicleNumber() + "' does not exist"));
-                        continue;
-                    }
-
-                Route  route = routeByCode.get(raw.routeCode());
-                    if (route == null) {
-                        errors.add(error(raw.rowNumber(), "Route Code", raw.routeCode(),
-                                "Route code '" + raw.routeCode() + "' does not exist"));
-                        continue;
-                    }
-
-//                    List<License> matches = licensesForRange.stream()
-//                            .filter(l -> !l.getStartDate().isAfter(raw.date()) && !l.getEndDate().isBefore(raw.date()))
-//                            .toList();
-//                    if (matches.isEmpty()) {
-//                        errors.add(error(raw.rowNumber(), "Date", raw.date().toString(),
-//                                "No valid license found for date " + raw.date()));
-//                        continue;
-//                    } else if (matches.size() > 1) {
-//                        errors.add(error(raw.rowNumber(), "Date", raw.date().toString(),
-//                                "Multiple valid licenses found for date " + raw.date() + "; cannot determine which to use"));
-//                        continue;
-//                    } else {
-//                        license = matches.getFirst();
-//                    }
-
-                if (raw.checkBy().isBlank()) {
+                if (vehicle == null) {
+                    errors.add(error(raw.rowNumber(), "Vehicle Number", raw.vehicleNumber(),
+                            "Vehicle number '" + raw.vehicleNumber() + "' does not exist"));
                     continue;
                 }
 
-                resolved.add(new ResolvedRow(raw.date, vehicle, raw.bilNumber(), route, raw.checkBy()));
+                Route route = routeByCode.get(raw.routeCode());
+                if (route == null) {
+                    errors.add(error(raw.rowNumber(), "Route Code", raw.routeCode(),
+                            "Route code '" + raw.routeCode() + "' does not exist"));
+                    continue;
+                }
+
+                resolved.add(new ResolvedRow(raw.rowNumber, raw.date, vehicle, raw.bilNumber(), route));
             }
 
             if (!errors.isEmpty()) {
                 throw new ExcelValidationException("Daily route upload validation failed", errors, rawRows.size());
             }
-
-//            PriceRate activePriceRate = priceRateRepository.findByStatus(PriceRateStatus.ACTIVE)
-//                    .orElseThrow(() -> new BusinessException(
-//                            "No active price rate is available.", ErrorCodeConstants.ACTIVE_PRICE_RATE_NOT_FOUND));
 
             FileHistory fileHistory = fileHistoryService.createFileHistory(fileName, FileType.DAILY_ROUTE);
             String actor = SecurityUtil.getCurrentUsername();
@@ -217,13 +172,70 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
 //                                log.info("Bulk daily route upload: activated {} vehicle license, by={}", saved.getId(), actor);
 //                            });
 
+            resolved.forEach(raw -> {
+
+                if (!licenseRepository.existsActiveLicenseByDate(raw.date)) { // TODO: this impl is also exists in Daily route create / update
+
+                    errors.add(error(raw.rowNumber(), "Date", String.valueOf(raw.date),
+                            "Valid license does not exists for the daily route date"));
+
+                } else {
+
+                    List<License> licenses = licenseRepository.findAllActiveLicensesByDate(raw.date);
+                    List<VehicleLicense> vehicleLicenses = vehicleLicenseRepository.findByVehicleAndLicenseInAndDeletedFalse(raw.vehicle, licenses);
+
+                    if (vehicleLicenses.isEmpty()) {
+
+                        errors.add(
+                                error(
+                                        raw.rowNumber(), "Vehicle Number", raw.vehicle.getVehicleNumber(),
+                                        "Vehicle license does not exists for the vehicle, Please assign a vehicle license for the vehicle : " +
+                                                raw.vehicle.getVehicleNumber()
+                                )
+                        );
+
+                    } else if (vehicleLicenses.size() > 1) {
+
+                        errors.add(
+                                error(
+                                        raw.rowNumber(), "Vehicle Number", raw.vehicle.getVehicleNumber(),
+                                        "Multiple vehicle license assigned for the vehicle : " +
+                                                raw.vehicle.getVehicleNumber()
+                                )
+                        );
+
+                    } else if (vehicleLicenses.getFirst().getDate() == null) {
+
+                        VehicleLicense vehicleLicense = vehicleLicenses.getFirst();
+                        vehicleLicense.setDate(raw.date);
+                        try {
+
+                            vehicleLicenseRepository.save(vehicleLicense);
+
+                        } catch (Exception ex) {
+
+                            log.error("Daily route upload validation failed : {}", ex.getMessage(), ex);
+
+                            throw new ExcelValidationException("Vehicle license save failed : " + ex.getMessage(), errors, rawRows.size());
+
+                        }
+
+                    }
+
+                }
+
+            });
+
+            if (!errors.isEmpty()) {
+                throw new ExcelValidationException("Daily route upload validation failed", errors, rawRows.size());
+            }
+
             List<DailyRoute> entities = (List<DailyRoute>) resolved.stream()
                     .map(row -> DailyRoute.builder()
                             .date(row.date())
                             .vehicle(row.vehicle())
                             .route(row.route())
                             .amount(computeAmount(row.vehicle(), row.route()))
-                            .checkBy(row.checkBy())
                             .billNumber(row.bilNumber())
                             .fileHistory(fileHistory)
                             .deleted(false)

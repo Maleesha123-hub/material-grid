@@ -110,8 +110,28 @@ public class VehicleServiceImpl implements VehicleService {
 
         Vehicle vehicle = findOrThrow(id);
         vehicle.setVehicleNumber(request.getVehicleNumber());
-        vehicle.setCapacity(request.getCapacity());
-        vehicle.setModifiedBy(actor);
+        vehicle.setModifiedBy(SecurityUtil.getCurrentUsername());
+
+        if (!vehicle.getCapacity().equals(request.getCapacity())) {
+
+            List<DailyRoute> dailyRoutes = dailyRouteRepository.findByVehicle(vehicle.getId());
+
+            dailyRoutes.forEach(dailyRoute -> {
+
+                dailyRoute.setAmount(
+                        request.getCapacity()
+                                .multiply(dailyRoute.getRoute().getPrice())
+                                .multiply(dailyRoute.getRoute().getKm())
+                                .setScale(2, RoundingMode.HALF_UP)
+                );
+
+            });
+
+            dailyRouteRepository.saveAll(dailyRoutes);
+
+            vehicle.setCapacity(request.getCapacity());
+
+        }
 
         Vehicle saved = vehicleRepository.save(vehicle);
 

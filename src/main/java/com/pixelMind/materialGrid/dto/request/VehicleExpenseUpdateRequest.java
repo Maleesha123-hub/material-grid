@@ -14,8 +14,10 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class VehicleExpenseUpdateRequest {
 
-    @NotNull(message = "Date is required")
-    private LocalDate date;
+    @NotNull(message = "Expense Date is required")
+    private LocalDate expenseDate;
+
+    private Long vehicleId;
 
     @NotNull(message = "Expenses is required")
     @DecimalMin(value = "0.0001", message = "Expenses must be greater than zero")

@@ -5,10 +5,14 @@ import com.pixelMind.materialGrid.dto.response.PriceRateSummaryResponse;
 import com.pixelMind.materialGrid.dto.response.RouteSummaryResponse;
 import com.pixelMind.materialGrid.dto.response.VehicleSummaryResponse;
 import com.pixelMind.materialGrid.entity.DailyRoute;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class DailyRouteMapper {
+
+    private final FileHistoryMapper fileHistoryMapper;
 
     public DailyRouteResponse toResponse(DailyRoute dailyRoute) {
         if (dailyRoute == null) {
@@ -26,8 +30,9 @@ public class DailyRouteMapper {
                         .routeCode(dailyRoute.getRoute().getRouteCode())
                         .build())
                 .amount(dailyRoute.getAmount())
-                .checkBy(dailyRoute.getCheckBy())
                 .bilNumber(dailyRoute.getBillNumber())
+                .fileHistoryId(dailyRoute.getFileHistory() != null ? dailyRoute.getFileHistory().getId() : null)
+                .fileHistory(fileHistoryMapper.toResponse(dailyRoute.getFileHistory()))
                 .createdBy(dailyRoute.getCreatedBy())
                 .createdDate(dailyRoute.getCreatedDate())
                 .modifiedBy(dailyRoute.getModifiedBy())

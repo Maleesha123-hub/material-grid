@@ -62,4 +62,22 @@ public interface LicenseRepository extends JpaRepository<License, Long> {
             @Param("endDate") LocalDate endDate);
 
     List<License> findByLicenseCodeInAndDeletedFalse(Collection<String> licenseCodes);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(l) > 0 THEN true ELSE false END
+            FROM License l
+            WHERE l.deleted = false
+            AND :date BETWEEN l.startDate AND l.endDate
+            """)
+    boolean existsActiveLicenseByDate(@Param("date") LocalDate date);
+
+    @Query(""" 
+            SELECT l
+            FROM License l
+            WHERE l.deleted = false
+            AND :date BETWEEN l.startDate AND l.endDate
+            """)
+    List<License> findAllActiveLicensesByDate(@Param("date") LocalDate date);
+
+
 }

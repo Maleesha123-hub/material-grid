@@ -15,11 +15,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.time.LocalDate;
 
 @Tag(name = "Vehicle Licenses", description = "Vehicle-to-License assignment records (date + status), supports repeat/renewal assignments")
 @RestController
@@ -44,13 +47,24 @@ public class VehicleLicenseController {
         return ResponseEntity.ok(ApiResponse.success(result.getMessage(), result));
     }
 
-    @Operation(summary = "List vehicle-license assignments (paginated, filterable by status)")
+    @Operation(summary = "Search vehicle licenses (paginated; filter by licenseId, vehicleId, date/assignDate, createdDate, status, fileHistoryId)")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<VehicleLicenseResponse>>> getAll(
+            @RequestParam(required = false) Long licenseId,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate assignDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate assignedDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdDate,
             @RequestParam(required = false) VehicleLicenseStatus status,
+            @RequestParam(required = false) Long fileHistoryId,
             @PageableDefault(size = 20, sort = "id") Pageable pageable) {
-        PageResponse<VehicleLicenseResponse> page =
-                new PageResponse<>(vehicleLicenseService.getVehicleLicenses(status, pageable));
+
+        LocalDate resolvedDate = date != null ? date : (assignDate != null ? assignDate : assignedDate);
+
+        PageResponse<VehicleLicenseResponse> page = new PageResponse<>(
+                vehicleLicenseService.search(licenseId, vehicleId, resolvedDate, createdDate, status, fileHistoryId, pageable));
+
         return ResponseEntity.ok(ApiResponse.success("Vehicle licenses retrieved successfully", page));
     }
 

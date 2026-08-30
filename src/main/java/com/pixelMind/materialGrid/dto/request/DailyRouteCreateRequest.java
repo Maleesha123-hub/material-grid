@@ -23,10 +23,6 @@ public class DailyRouteCreateRequest {
     @NotNull(message = "Route id is required")
     private Long routeId;
 
-    @NotBlank(message = "Check By is required")
-    @Size(max = 100)
-    private String checkBy;
-
     @NotBlank(message = "Bil Number is required")
     @Size(max = 100)
     private String billNumber;

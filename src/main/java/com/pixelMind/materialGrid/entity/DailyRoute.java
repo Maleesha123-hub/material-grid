@@ -48,9 +48,6 @@ public class DailyRoute extends BaseAuditableEntity {
     @Column(name = "amount", nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
 
-    @Column(name = "check_by", nullable = false, length = 100)
-    private String checkBy;
-
     @Column(name = "bill_number", nullable = false, length = 100)
     private String billNumber;
 

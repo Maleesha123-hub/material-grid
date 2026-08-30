@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * VehicleExpense rows are historical financial records. "Delete" is
@@ -76,6 +77,28 @@ public class VehicleExpenseServiceImpl implements VehicleExpenseService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<VehicleExpenseResponse> search(
+            LocalDate date,
+            LocalDate createdDate,
+            Long vehicleId,
+            Long fileHistoryId,
+            Pageable pageable
+    ) {
+        LocalDateTime createdDateFrom = createdDate != null ? createdDate.atStartOfDay() : null;
+        LocalDateTime createdDateTo = createdDate != null ? createdDate.plusDays(1).atStartOfDay() : null;
+
+        return vehicleExpenseRepository.search(
+                        date,
+                        createdDateFrom,
+                        createdDateTo,
+                        vehicleId,
+                        fileHistoryId,
+                        pageable)
+                .map(vehicleExpenseMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Page<VehicleExpenseResponse> getByVehicle(Long vehicleId, Pageable pageable) {
         return vehicleExpenseRepository.findByVehicleIdAndDeletedFalse(vehicleId, pageable)
                 .map(vehicleExpenseMapper::toResponse);
@@ -85,13 +108,21 @@ public class VehicleExpenseServiceImpl implements VehicleExpenseService {
     @Transactional
     public VehicleExpenseResponse updateVehicleExpense(Long id, VehicleExpenseUpdateRequest request) {
         VehicleExpense expense = findOrThrow(id);
-        expense.setDate(request.getDate());
+        Vehicle vehicle = findVehicleOrThrow(request.getVehicleId());
+        expense.setVehicle(vehicle);
+        expense.setDate(request.getExpenseDate());
         expense.setExpenses(request.getExpenses());
         expense.setModifiedBy(SecurityUtil.getCurrentUsername());
 
         VehicleExpense saved = vehicleExpenseRepository.save(expense);
         log.info("VehicleExpense updated: id={}, by={}", saved.getId(), expense.getModifiedBy());
         return vehicleExpenseMapper.toResponse(saved);
+    }
+
+    private Vehicle findVehicleOrThrow(Long id) {
+        return vehicleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Vehicle not found with id: " + id, ErrorCodeConstants.VEHICLE_NOT_FOUND));
     }
 
     @Override
