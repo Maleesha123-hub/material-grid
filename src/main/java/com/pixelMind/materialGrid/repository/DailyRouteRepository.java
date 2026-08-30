@@ -9,7 +9,6 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 
 public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
@@ -52,4 +51,16 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
             @Param("vehicleId") Long vehicleId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    @Query("""
+            select d
+            from DailyRoute d
+            where d.deleted = false
+              and d.vehicle.id = :vehicleId
+            order by d.date asc
+            """)
+    List<DailyRoute> findByVehicle(
+            @Param("vehicleId") Long vehicleId
+    );
+
 }

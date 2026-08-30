@@ -6,6 +6,7 @@ import com.pixelMind.materialGrid.dto.request.VehicleUpdateRequest;
 import com.pixelMind.materialGrid.dto.response.BulkUploadResponse;
 import com.pixelMind.materialGrid.dto.response.ExcelValidationError;
 import com.pixelMind.materialGrid.dto.response.VehicleResponse;
+import com.pixelMind.materialGrid.entity.DailyRoute;
 import com.pixelMind.materialGrid.entity.Vehicle;
 import com.pixelMind.materialGrid.exception.BusinessException;
 import com.pixelMind.materialGrid.exception.DuplicateResourceException;
@@ -33,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -105,8 +107,28 @@ public class VehicleServiceImpl implements VehicleService {
     public VehicleResponse updateVehicle(Long id, VehicleUpdateRequest request) {
         Vehicle vehicle = findOrThrow(id);
         vehicle.setVehicleNumber(request.getVehicleNumber());
-        vehicle.setCapacity(request.getCapacity());
         vehicle.setModifiedBy(SecurityUtil.getCurrentUsername());
+
+        if (!vehicle.getCapacity().equals(request.getCapacity())) {
+
+            List<DailyRoute> dailyRoutes = dailyRouteRepository.findByVehicle(vehicle.getId());
+
+            dailyRoutes.forEach(dailyRoute -> {
+
+                dailyRoute.setAmount(
+                        request.getCapacity()
+                                .multiply(dailyRoute.getRoute().getPrice())
+                                .multiply(dailyRoute.getRoute().getKm())
+                                .setScale(2, RoundingMode.HALF_UP)
+                );
+
+            });
+
+            dailyRouteRepository.saveAll(dailyRoutes);
+
+            vehicle.setCapacity(request.getCapacity());
+
+        }
 
         Vehicle saved = vehicleRepository.save(vehicle);
         log.info("Vehicle updated: id={}, by={}", saved.getId(), vehicle.getModifiedBy());
