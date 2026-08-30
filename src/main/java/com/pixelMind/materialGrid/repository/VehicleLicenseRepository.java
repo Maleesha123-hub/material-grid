@@ -1,5 +1,7 @@
 package com.pixelMind.materialGrid.repository;
 
+import com.pixelMind.materialGrid.entity.License;
+import com.pixelMind.materialGrid.entity.Vehicle;
 import com.pixelMind.materialGrid.entity.VehicleLicense;
 import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
 import org.springframework.data.domain.Page;
@@ -68,9 +70,10 @@ public interface VehicleLicenseRepository extends JpaRepository<VehicleLicense, 
             Collection<Long> vehicleIds,
             Collection<Long> licenseIds);
 
-    List<VehicleLicense> findByVehicleIdAndDateAndDeletedFalse(
-            Long vehicleId,
-            LocalDate date);
+    List<VehicleLicense> findByVehicleAndLicenseInAndDeletedFalse(
+            Vehicle vehicle,
+            List<License> licenses
+    );
 
     List<VehicleLicense> findByVehicleIdAndDateBetweenAndDeletedFalse(
             Long vehicleId,
