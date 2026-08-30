@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -17,8 +18,13 @@ public class VehicleLicenseResponse {
     private String vehicleNumber;
     private Long licenseId;
     private String licenseCode;
+    private BigDecimal price;
+    private BigDecimal amount;
     private LocalDate date;
+    private LocalDate assignDate;
     private VehicleLicenseStatus status;
+    private Long fileHistoryId;
+    private FileHistoryResponse fileHistory;
     private String createdBy;
     private LocalDateTime createdDate;
     private String modifiedBy;

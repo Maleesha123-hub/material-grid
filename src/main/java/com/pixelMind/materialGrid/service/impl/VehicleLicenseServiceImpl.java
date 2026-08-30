@@ -22,6 +22,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 /**
  * Business assumption made explicit (per the spec's request to justify the
  * uniqueness decision before implementing it): a Vehicle CAN legitimately
@@ -86,6 +89,32 @@ public class VehicleLicenseServiceImpl implements VehicleLicenseService {
             return vehicleLicenseRepository.findByStatusAndDeletedFalse(status, pageable).map(vehicleLicenseMapper::toResponse);
         }
         return vehicleLicenseRepository.findAll(pageable).map(vehicleLicenseMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<VehicleLicenseResponse> search(
+            Long licenseId,
+            Long vehicleId,
+            LocalDate date,
+            LocalDate createdDate,
+            VehicleLicenseStatus status,
+            Long fileHistoryId,
+            Pageable pageable
+    ) {
+        LocalDateTime createdDateFrom = createdDate != null ? createdDate.atStartOfDay() : null;
+        LocalDateTime createdDateTo = createdDate != null ? createdDate.plusDays(1).atStartOfDay() : null;
+
+        return vehicleLicenseRepository.search(
+                        licenseId,
+                        vehicleId,
+                        date,
+                        createdDateFrom,
+                        createdDateTo,
+                        status,
+                        fileHistoryId,
+                        pageable)
+                .map(vehicleLicenseMapper::toResponse);
     }
 
     @Override

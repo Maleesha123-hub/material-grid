@@ -7,6 +7,8 @@ import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
+
 public interface VehicleLicenseService {
 
     VehicleLicenseResponse createVehicleLicense(VehicleLicenseCreateRequest request);
@@ -14,6 +16,15 @@ public interface VehicleLicenseService {
     VehicleLicenseResponse getVehicleLicense(Long id);
 
     Page<VehicleLicenseResponse> getVehicleLicenses(VehicleLicenseStatus status, Pageable pageable);
+
+    Page<VehicleLicenseResponse> search(
+            Long licenseId,
+            Long vehicleId,
+            LocalDate date,
+            LocalDate createdDate,
+            VehicleLicenseStatus status,
+            Long fileHistoryId,
+            Pageable pageable);
 
     Page<VehicleLicenseResponse> getByVehicle(Long vehicleId, Pageable pageable);
 
