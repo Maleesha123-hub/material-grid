@@ -24,7 +24,7 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
               and (:billNumber is null or lower(d.billNumber) like lower(concat('%', :billNumber, '%')))
               and (:vehicleId is null or d.vehicle.id = :vehicleId)
               and (:routeId is null or d.route.id = :routeId)
-              and (:fileHistoryId is null or (fh.id = :fileHistoryId and fh.fileType = com.pixelMind.materialGrid.entity.enums.FileType.DAILY_ROUTE))
+              and (:fileHistoryId is null or fh.id = :fileHistoryId)
             """)
     Page<DailyRoute> search(
             @Param("date") LocalDate date,

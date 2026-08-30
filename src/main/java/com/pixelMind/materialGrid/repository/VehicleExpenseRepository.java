@@ -22,7 +22,7 @@ public interface VehicleExpenseRepository extends JpaRepository<VehicleExpense, 
               and (:createdDateFrom is null or e.createdDate >= :createdDateFrom)
               and (:createdDateTo is null or e.createdDate < :createdDateTo)
               and (:vehicleId is null or e.vehicle.id = :vehicleId)
-              and (:fileHistoryId is null or (fh.id = :fileHistoryId and fh.fileType = com.pixelMind.materialGrid.entity.enums.FileType.VEHICLE_EXPENSE))
+              and (:fileHistoryId is null or fh.id = :fileHistoryId)
             """)
     Page<VehicleExpense> search(
             @Param("date") LocalDate date,

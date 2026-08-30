@@ -108,13 +108,21 @@ public class VehicleExpenseServiceImpl implements VehicleExpenseService {
     @Transactional
     public VehicleExpenseResponse updateVehicleExpense(Long id, VehicleExpenseUpdateRequest request) {
         VehicleExpense expense = findOrThrow(id);
-        expense.setDate(request.getDate());
+        Vehicle vehicle = findVehicleOrThrow(request.getVehicleId());
+        expense.setVehicle(vehicle);
+        expense.setDate(request.getExpenseDate());
         expense.setExpenses(request.getExpenses());
         expense.setModifiedBy(SecurityUtil.getCurrentUsername());
 
         VehicleExpense saved = vehicleExpenseRepository.save(expense);
         log.info("VehicleExpense updated: id={}, by={}", saved.getId(), expense.getModifiedBy());
         return vehicleExpenseMapper.toResponse(saved);
+    }
+
+    private Vehicle findVehicleOrThrow(Long id) {
+        return vehicleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Vehicle not found with id: " + id, ErrorCodeConstants.VEHICLE_NOT_FOUND));
     }
 
     @Override
