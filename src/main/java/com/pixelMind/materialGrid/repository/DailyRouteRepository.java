@@ -16,6 +16,7 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
 
     @Query("""
             select d from DailyRoute d
+            left join d.fileHistory fh
             where d.deleted = false
               and (:date is null or d.date = :date)
               and (:createdDateFrom is null or d.createdDate >= :createdDateFrom)
@@ -23,7 +24,7 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
               and (:billNumber is null or lower(d.billNumber) like lower(concat('%', :billNumber, '%')))
               and (:vehicleId is null or d.vehicle.id = :vehicleId)
               and (:routeId is null or d.route.id = :routeId)
-              and (:fileHistoryId is null or (d.fileHistory.id = :fileHistoryId and d.fileHistory.fileType = com.pixelMind.materialGrid.entity.enums.FileType.DAILY_ROUTE))
+              and (:fileHistoryId is null or (fh.id = :fileHistoryId and fh.fileType = com.pixelMind.materialGrid.entity.enums.FileType.DAILY_ROUTE))
             """)
     Page<DailyRoute> search(
             @Param("date") LocalDate date,
