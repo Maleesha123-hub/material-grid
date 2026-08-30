@@ -63,10 +63,10 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
     private final PriceRateRepository priceRateRepository;
     private final FileHistoryService fileHistoryService;
 
-    private record RawRow(int rowNumber, LocalDate date, String vehicleNumber, String bilNumber, String routeCode, String checkBy) {
+    private record RawRow(int rowNumber, LocalDate date, String vehicleNumber, String bilNumber, String routeCode) {
     }
 
-    private record ResolvedRow(LocalDate date, Vehicle vehicle, String bilNumber, Route route, String checkBy) {
+    private record ResolvedRow(LocalDate date, Vehicle vehicle, String bilNumber, Route route) {
     }
 
     @Override
@@ -85,7 +85,6 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
             int vehicleCol = ExcelUtil.columnOf(headerIndex, "Vehicle Number");
             int bilNumberCol = ExcelUtil.columnOf(headerIndex, "Bil Number");
             int routeCol = ExcelUtil.columnOf(headerIndex, "Route Code");
-            int checkByCol = ExcelUtil.columnOf(headerIndex, "Check By");
 
             List<ExcelValidationError> errors = new ArrayList<>();
             List<RawRow> rawRows = new ArrayList<>();
@@ -119,12 +118,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                     errors.add(error(rowNumber, "Route Code", null, "Route code is required"));
                 }
 
-                String checkBy = ExcelUtil.readString(row, checkByCol);
-                if (checkBy.isBlank()) {
-                    errors.add(error(rowNumber, "Check By", null, "Check By is required"));
-                }
-
-                rawRows.add(new RawRow(rowNumber, date.orElse(null), vehicleNumber, bilNumber, routeCode, checkBy));
+                rawRows.add(new RawRow(rowNumber, date.orElse(null), vehicleNumber, bilNumber, routeCode));
             }
 
             if (rawRows.isEmpty()) {
@@ -169,26 +163,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                         continue;
                     }
 
-//                    List<License> matches = licensesForRange.stream()
-//                            .filter(l -> !l.getStartDate().isAfter(raw.date()) && !l.getEndDate().isBefore(raw.date()))
-//                            .toList();
-//                    if (matches.isEmpty()) {
-//                        errors.add(error(raw.rowNumber(), "Date", raw.date().toString(),
-//                                "No valid license found for date " + raw.date()));
-//                        continue;
-//                    } else if (matches.size() > 1) {
-//                        errors.add(error(raw.rowNumber(), "Date", raw.date().toString(),
-//                                "Multiple valid licenses found for date " + raw.date() + "; cannot determine which to use"));
-//                        continue;
-//                    } else {
-//                        license = matches.getFirst();
-//                    }
-
-                if (raw.checkBy().isBlank()) {
-                    continue;
-                }
-
-                resolved.add(new ResolvedRow(raw.date, vehicle, raw.bilNumber(), route, raw.checkBy()));
+                resolved.add(new ResolvedRow(raw.date, vehicle, raw.bilNumber(), route));
             }
 
             if (!errors.isEmpty()) {
@@ -223,7 +198,6 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                             .vehicle(row.vehicle())
                             .route(row.route())
                             .amount(computeAmount(row.vehicle(), row.route()))
-                            .checkBy(row.checkBy())
                             .billNumber(row.bilNumber())
                             .fileHistory(fileHistory)
                             .deleted(false)

@@ -63,7 +63,6 @@ public class DailyRouteServiceImpl implements DailyRouteService {
                 .vehicle(vehicle)
                 .route(route)
                 .amount(amount)
-                .checkBy(request.getCheckBy())
                 .billNumber(request.getBillNumber())
                 .createdBy(actor)
                 .modifiedBy(actor)
@@ -113,13 +112,12 @@ public class DailyRouteServiceImpl implements DailyRouteService {
     public DailyRouteResponse updateDailyRoute(Long id, DailyRouteUpdateRequest request) {
         DailyRoute dailyRoute = findOrThrow(id);
         Vehicle vehicle = findVehicleOrThrow(request.getVehicleId());
-        Route route = findRouteOrThrow(request.getRouteId());
+//        Route route = findRouteOrThrow(request.getRouteId());
 
         dailyRoute.setDate(request.getDate());
         dailyRoute.setVehicle(vehicle);
-        dailyRoute.setRoute(route);
-        dailyRoute.setAmount(computeAmount(vehicle, route));
-        dailyRoute.setCheckBy(request.getCheckBy());
+//        dailyRoute.setRoute(route);
+//        dailyRoute.setAmount(computeAmount(vehicle, route));
         dailyRoute.setBillNumber(request.getBillNumber());
         dailyRoute.setModifiedBy(SecurityUtil.getCurrentUsername());
 

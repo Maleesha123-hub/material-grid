@@ -5,7 +5,6 @@ CREATE TABLE daily_routes (
     price_rate_id   BIGINT        NOT NULL,
     route_id        BIGINT        NOT NULL,
     amount          DECIMAL(19,4) NOT NULL,
-    check_by        VARCHAR(100)  NOT NULL,
     bill_number     VARCHAR(100)  NOT NULL,
     deleted         TINYINT(1)    NOT NULL DEFAULT 0,
     created_by      VARCHAR(50),

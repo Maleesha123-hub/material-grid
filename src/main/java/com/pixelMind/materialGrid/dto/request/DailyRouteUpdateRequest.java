@@ -20,12 +20,8 @@ public class DailyRouteUpdateRequest {
     @NotNull(message = "Vehicle id is required")
     private Long vehicleId;
 
-    @NotNull(message = "Route id is required")
+//    @NotNull(message = "Route id is required")
     private Long routeId;
-
-    @NotBlank(message = "Check By is required")
-    @Size(max = 100)
-    private String checkBy;
 
     @NotBlank(message = "Bil Number is required")
     @Size(max = 100)

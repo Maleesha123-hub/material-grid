@@ -30,7 +30,6 @@ public class DailyRouteMapper {
                         .routeCode(dailyRoute.getRoute().getRouteCode())
                         .build())
                 .amount(dailyRoute.getAmount())
-                .checkBy(dailyRoute.getCheckBy())
                 .bilNumber(dailyRoute.getBillNumber())
                 .fileHistoryId(dailyRoute.getFileHistory() != null ? dailyRoute.getFileHistory().getId() : null)
                 .fileHistory(fileHistoryMapper.toResponse(dailyRoute.getFileHistory()))
