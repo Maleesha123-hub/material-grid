@@ -174,7 +174,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
 
             resolved.forEach(raw -> {
 
-                if (!licenseRepository.existsActiveLicenseByDate(raw.date)) {
+                if (!licenseRepository.existsActiveLicenseByDate(raw.date)) { // TODO: this impl is also exists in Daily route create / update
 
                     errors.add(error(raw.rowNumber(), "Date", String.valueOf(raw.date),
                             "Valid license does not exists for the daily route date"));
@@ -204,9 +204,9 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                                 )
                         );
 
-                    } else if (vehicleLicenses.get(0).getDate() == null) {
+                    } else if (vehicleLicenses.getFirst().getDate() == null) {
 
-                        VehicleLicense vehicleLicense = vehicleLicenses.get(0);
+                        VehicleLicense vehicleLicense = vehicleLicenses.getFirst();
                         vehicleLicense.setDate(raw.date);
                         try {
 

@@ -4,11 +4,11 @@ import com.pixelMind.materialGrid.constant.ErrorCodeConstants;
 import com.pixelMind.materialGrid.dto.request.VehicleLicenseCreateRequest;
 import com.pixelMind.materialGrid.dto.request.VehicleLicenseUpdateRequest;
 import com.pixelMind.materialGrid.dto.response.VehicleLicenseResponse;
-import com.pixelMind.materialGrid.entity.DailyRoute;
 import com.pixelMind.materialGrid.entity.License;
 import com.pixelMind.materialGrid.entity.Vehicle;
 import com.pixelMind.materialGrid.entity.VehicleLicense;
 import com.pixelMind.materialGrid.entity.enums.VehicleLicenseStatus;
+import com.pixelMind.materialGrid.exception.BusinessException;
 import com.pixelMind.materialGrid.exception.ResourceNotFoundException;
 import com.pixelMind.materialGrid.mapper.VehicleLicenseMapper;
 import com.pixelMind.materialGrid.repository.DailyRouteRepository;
@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -68,6 +69,17 @@ public class VehicleLicenseServiceImpl implements VehicleLicenseService {
         License license = licenseRepository.findById(request.getLicenseId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "License not found with id: " + request.getLicenseId(), ErrorCodeConstants.LICENSE_NOT_FOUND));
+
+        List<VehicleLicense> existsVehicleLicenses = vehicleLicenseRepository.findByVehicleAndLicenseInAndDeletedFalse(
+                vehicle, Collections.singletonList(license)
+        );
+
+        if (!existsVehicleLicenses.isEmpty()) {
+            throw new BusinessException("Vehicle license " +
+                    license.getLicenseCode() +
+                    " is already assigned to " +
+                    vehicle.getVehicleNumber(), "400");
+        }
 
         String actor = SecurityUtil.getCurrentUsername();
         VehicleLicense vehicleLicense = VehicleLicense.builder()
@@ -115,14 +127,14 @@ public class VehicleLicenseServiceImpl implements VehicleLicenseService {
         LocalDateTime createdDateTo = createdDate != null ? createdDate.plusDays(1).atStartOfDay() : null;
 
         return vehicleLicenseRepository.search(
-                licenseId,
-                vehicleId,
-                date,
-                createdDateFrom,
-                createdDateTo,
-                status,
-                fileHistoryId,
-                pageable)
+                        licenseId,
+                        vehicleId,
+                        date,
+                        createdDateFrom,
+                        createdDateTo,
+                        status,
+                        fileHistoryId,
+                        pageable)
                 .map(vehicleLicenseMapper::toResponse);
     }
 
