@@ -7,6 +7,7 @@ import com.pixelMind.materialGrid.dto.response.BulkUploadResponse;
 import com.pixelMind.materialGrid.dto.response.ExcelValidationError;
 import com.pixelMind.materialGrid.dto.response.VehicleResponse;
 import com.pixelMind.materialGrid.entity.DailyRoute;
+import com.pixelMind.materialGrid.entity.Route;
 import com.pixelMind.materialGrid.entity.Vehicle;
 import com.pixelMind.materialGrid.exception.BusinessException;
 import com.pixelMind.materialGrid.exception.DuplicateResourceException;
@@ -105,6 +106,8 @@ public class VehicleServiceImpl implements VehicleService {
     @Override
     @Transactional
     public VehicleResponse updateVehicle(Long id, VehicleUpdateRequest request) {
+        String actor = SecurityUtil.getCurrentUsername();
+
         Vehicle vehicle = findOrThrow(id);
         vehicle.setVehicleNumber(request.getVehicleNumber());
         vehicle.setModifiedBy(SecurityUtil.getCurrentUsername());
@@ -131,6 +134,19 @@ public class VehicleServiceImpl implements VehicleService {
         }
 
         Vehicle saved = vehicleRepository.save(vehicle);
+
+        List<DailyRoute> dailyRoutes = dailyRouteRepository.findByVehicleIdAndDeletedFalse(id)
+                .stream()
+                .peek(dailyRoute -> {
+                    dailyRoute.setAmount(
+                            computeAmount(saved, dailyRoute.getRoute())
+                    );
+                    dailyRoute.setModifiedBy(actor);
+                })
+                .toList();
+
+        dailyRouteRepository.saveAll(dailyRoutes);
+
         log.info("Vehicle updated: id={}, by={}", saved.getId(), vehicle.getModifiedBy());
         return vehicleMapper.toResponse(saved);
     }
@@ -315,6 +331,13 @@ public class VehicleServiceImpl implements VehicleService {
         return vehicleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Vehicle not found with id: " + id, ErrorCodeConstants.VEHICLE_NOT_FOUND));
+    }
+
+    private BigDecimal computeAmount(Vehicle vehicle, Route route) {
+        return vehicle.getCapacity()
+                .multiply(route.getPrice())
+                .multiply(route.getKm())
+                .setScale(2, RoundingMode.HALF_UP);
     }
 }
 

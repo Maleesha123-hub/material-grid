@@ -39,6 +39,26 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
 
     boolean existsByRouteIdAndDeletedFalse(Long routeId);
 
+    //boolean existsByPriceRateIdAndDeletedFalse(Long priceRateId);
+
+    @Query("""
+            select d from DailyRoute d
+            where d.deleted = false
+              and d.date in :dates
+              and d.vehicle.id in :vehicleIds
+              and d.route.id in :routeIds
+            """)
+    List<DailyRoute> findPotentialDuplicates(
+            @Param("dates") Collection<LocalDate> dates,
+            @Param("vehicleIds") Collection<Long> vehicleIds,
+            @Param("routeIds") Collection<Long> routeIds);
+
+    List<DailyRoute> findByVehicleIdAndDateAndDeletedFalse(
+            Long vehicleId,
+            LocalDate date);
+
+    List<DailyRoute> findByVehicleIdAndDeletedFalse(Long vehicleId);
+
     @Query("""
             select d from DailyRoute d
             join fetch d.route
