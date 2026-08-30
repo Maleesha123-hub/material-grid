@@ -69,14 +69,11 @@ public class VehicleLicenseServiceImpl implements VehicleLicenseService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "License not found with id: " + request.getLicenseId(), ErrorCodeConstants.LICENSE_NOT_FOUND));
 
-        List<DailyRoute> routes = dailyRouteRepository.findByVehicleIdAndDateBetween(
-                vehicle.getId(), license.getStartDate(), license.getEndDate());
-
         String actor = SecurityUtil.getCurrentUsername();
         VehicleLicense vehicleLicense = VehicleLicense.builder()
                 .vehicle(vehicle)
                 .license(license)
-                .date(!routes.isEmpty() ? routes.getFirst().getDate() : null)
+                .date(null)
                 .status(VehicleLicenseStatus.ACTIVE)
                 .createdBy(actor)
                 .modifiedBy(actor)
@@ -157,10 +154,8 @@ public class VehicleLicenseServiceImpl implements VehicleLicenseService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "License not found with id: " + request.getLicenseId(), ErrorCodeConstants.LICENSE_NOT_FOUND));
 
-        List<DailyRoute> routes = dailyRouteRepository.findByVehicleIdAndDateBetween(
-                vehicle.getId(), license.getStartDate(), license.getEndDate());
-
-        vehicleLicense.setDate(!routes.isEmpty() ? routes.getFirst().getDate() : null);
+        vehicleLicense.setVehicle(vehicle);
+        vehicleLicense.setLicense(license);
         vehicleLicense.setStatus(VehicleLicenseStatus.ACTIVE);
         vehicleLicense.setModifiedBy(SecurityUtil.getCurrentUsername());
 
