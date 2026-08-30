@@ -16,6 +16,13 @@ public interface VehicleExpenseService {
 
     Page<VehicleExpenseResponse> getVehicleExpenses(LocalDate from, LocalDate to, Pageable pageable);
 
+    Page<VehicleExpenseResponse> search(
+            LocalDate date,
+            LocalDate createdDate,
+            Long vehicleId,
+            Long fileHistoryId,
+            Pageable pageable);
+
     Page<VehicleExpenseResponse> getByVehicle(Long vehicleId, Pageable pageable);
 
     VehicleExpenseResponse updateVehicleExpense(Long id, VehicleExpenseUpdateRequest request);

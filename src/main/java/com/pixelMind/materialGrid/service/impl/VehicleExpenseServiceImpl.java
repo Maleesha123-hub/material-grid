@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * VehicleExpense rows are historical financial records. "Delete" is
@@ -72,6 +73,28 @@ public class VehicleExpenseServiceImpl implements VehicleExpenseService {
                     .map(vehicleExpenseMapper::toResponse);
         }
         return vehicleExpenseRepository.findByDeletedFalse(pageable).map(vehicleExpenseMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<VehicleExpenseResponse> search(
+            LocalDate date,
+            LocalDate createdDate,
+            Long vehicleId,
+            Long fileHistoryId,
+            Pageable pageable
+    ) {
+        LocalDateTime createdDateFrom = createdDate != null ? createdDate.atStartOfDay() : null;
+        LocalDateTime createdDateTo = createdDate != null ? createdDate.plusDays(1).atStartOfDay() : null;
+
+        return vehicleExpenseRepository.search(
+                        date,
+                        createdDateFrom,
+                        createdDateTo,
+                        vehicleId,
+                        fileHistoryId,
+                        pageable)
+                .map(vehicleExpenseMapper::toResponse);
     }
 
     @Override

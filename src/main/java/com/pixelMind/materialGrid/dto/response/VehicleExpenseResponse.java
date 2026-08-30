@@ -15,8 +15,11 @@ public class VehicleExpenseResponse {
     private Long id;
     private LocalDate date;
     private BigDecimal expenses;
+    private BigDecimal amount;
     private Long vehicleId;
     private String vehicleNumber;
+    private Long fileHistoryId;
+    private FileHistoryResponse fileHistory;
     private String createdBy;
     private LocalDateTime createdDate;
     private String modifiedBy;

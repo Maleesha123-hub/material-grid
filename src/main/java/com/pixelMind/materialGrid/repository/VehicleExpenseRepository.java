@@ -9,9 +9,28 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface VehicleExpenseRepository extends JpaRepository<VehicleExpense, Long> {
+
+    @Query("""
+            select e from VehicleExpense e
+            left join e.fileHistory fh
+            where e.deleted = false
+              and (:date is null or e.date = :date)
+              and (:createdDateFrom is null or e.createdDate >= :createdDateFrom)
+              and (:createdDateTo is null or e.createdDate < :createdDateTo)
+              and (:vehicleId is null or e.vehicle.id = :vehicleId)
+              and (:fileHistoryId is null or (fh.id = :fileHistoryId and fh.fileType = com.pixelMind.materialGrid.entity.enums.FileType.VEHICLE_EXPENSE))
+            """)
+    Page<VehicleExpense> search(
+            @Param("date") LocalDate date,
+            @Param("createdDateFrom") LocalDateTime createdDateFrom,
+            @Param("createdDateTo") LocalDateTime createdDateTo,
+            @Param("vehicleId") Long vehicleId,
+            @Param("fileHistoryId") Long fileHistoryId,
+            Pageable pageable);
 
     Page<VehicleExpense> findByDeletedFalse(Pageable pageable);
 
