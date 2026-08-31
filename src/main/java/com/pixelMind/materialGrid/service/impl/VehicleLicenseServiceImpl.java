@@ -166,9 +166,21 @@ public class VehicleLicenseServiceImpl implements VehicleLicenseService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "License not found with id: " + request.getLicenseId(), ErrorCodeConstants.LICENSE_NOT_FOUND));
 
+        List<VehicleLicense> existsVehicleLicenses = vehicleLicenseRepository.findByVehicleAndLicenseInAndDeletedFalse(
+                vehicle, Collections.singletonList(license)
+        );
+
+        if (!existsVehicleLicenses.isEmpty()) {
+
+            throw new BusinessException("Vehicle license " +
+                    license.getLicenseCode() +
+                    " is already assigned to " +
+                    vehicle.getVehicleNumber(), "400");
+
+        }
+
         vehicleLicense.setVehicle(vehicle);
         vehicleLicense.setLicense(license);
-        vehicleLicense.setDate(request.getAssignedDate());
         vehicleLicense.setStatus(VehicleLicenseStatus.ACTIVE);
         vehicleLicense.setModifiedBy(SecurityUtil.getCurrentUsername());
 

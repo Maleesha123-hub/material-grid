@@ -175,7 +175,21 @@ public class DailyRouteServiceImpl implements DailyRouteService {
     @Override
     @Transactional
     public void deleteDailyRoute(Long id) {
+
         DailyRoute dailyRoute = findOrThrow(id);
+
+        // Validate daily route deletion
+        Vehicle vehicle = dailyRoute.getVehicle();
+        LocalDate routeDate = dailyRoute.getDate();
+
+        List<VehicleLicense> vehicleLicenses = vehicleLicenseRepository.findByVehicleAndDateAndDeletedFalse(
+                vehicle, routeDate
+        );
+
+        if (!vehicleLicenses.isEmpty()) {
+            throw new BusinessException("Vehicle license already exists for the daily route date", "400");
+        }
+
         dailyRoute.setDeleted(true);
         dailyRoute.setModifiedBy(SecurityUtil.getCurrentUsername());
         dailyRouteRepository.save(dailyRoute);

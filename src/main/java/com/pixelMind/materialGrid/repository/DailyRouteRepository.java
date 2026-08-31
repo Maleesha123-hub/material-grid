@@ -1,6 +1,8 @@
 package com.pixelMind.materialGrid.repository;
 
 import com.pixelMind.materialGrid.entity.DailyRoute;
+import com.pixelMind.materialGrid.entity.Route;
+import com.pixelMind.materialGrid.entity.Vehicle;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -54,9 +56,11 @@ public interface DailyRouteRepository extends JpaRepository<DailyRoute, Long> {
             @Param("vehicleIds") Collection<Long> vehicleIds,
             @Param("routeIds") Collection<Long> routeIds);
 
-    List<DailyRoute> findByVehicleIdAndDateAndDeletedFalse(
-            Long vehicleId,
-            LocalDate date);
+    List<DailyRoute> findByVehicleAndRouteAndDateAndDeletedFalse(
+            Vehicle vehicle,
+            Route route,
+            LocalDate date
+    );
 
     List<DailyRoute> findByVehicleIdAndDeletedFalse(Long vehicleId);
 

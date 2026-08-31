@@ -51,20 +51,14 @@ public interface VehicleLicenseRepository extends JpaRepository<VehicleLicense, 
             VehicleLicenseStatus status,
             Pageable pageable);
 
-    Page<VehicleLicense> findByVehicleIdAndStatusAndDeletedFalse(
-            Long vehicleId,
-            VehicleLicenseStatus status,
-            Pageable pageable);
+    List<VehicleLicense> findByVehicleAndDateAndDeletedFalse(
+            Vehicle vehicle,
+            LocalDate assignedDate
+    );
 
     boolean existsByVehicleIdAndDeletedFalse(Long vehicleId);
 
     boolean existsByLicenseIdAndDeletedFalse(Long licenseId);
-
-    boolean existsByVehicleIdAndLicenseIdAndDeletedFalse(
-            Long vehicleId,
-            Long licenseId);
-
-    boolean existsByVehicleIdAndLicenseIdAndDateAndDeletedFalse(Long vehicleId, Long licenseId, LocalDate date);
 
     List<VehicleLicense> findByVehicleIdInAndLicenseIdInAndDeletedFalse(
             Collection<Long> vehicleIds,

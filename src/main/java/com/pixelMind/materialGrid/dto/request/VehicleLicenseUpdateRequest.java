@@ -18,7 +18,4 @@ public class VehicleLicenseUpdateRequest {
     @NotNull(message = "License id is required")
     private Long licenseId;
 
-    @NotNull(message = "Assigned date is required")
-    private LocalDate assignedDate;
-
 }
