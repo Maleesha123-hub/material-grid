@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,5 +17,8 @@ public class VehicleLicenseUpdateRequest {
 
     @NotNull(message = "License id is required")
     private Long licenseId;
+
+    @NotNull(message = "Assigned date is required")
+    private LocalDate assignedDate;
 
 }

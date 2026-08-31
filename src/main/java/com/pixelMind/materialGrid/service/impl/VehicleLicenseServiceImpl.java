@@ -168,6 +168,7 @@ public class VehicleLicenseServiceImpl implements VehicleLicenseService {
 
         vehicleLicense.setVehicle(vehicle);
         vehicleLicense.setLicense(license);
+        vehicleLicense.setDate(request.getAssignedDate());
         vehicleLicense.setStatus(VehicleLicenseStatus.ACTIVE);
         vehicleLicense.setModifiedBy(SecurityUtil.getCurrentUsername());
 
