@@ -3,4 +3,4 @@ spring:
     name: materialGrid
 
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:prod}
+    active: ${SPRING_PROFILES_ACTIVE:qa}
