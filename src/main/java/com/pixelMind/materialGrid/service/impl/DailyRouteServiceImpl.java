@@ -89,13 +89,6 @@ public class DailyRouteServiceImpl implements DailyRouteService {
                         "400"
                 );
 
-            } else if (vehicleLicenses.size() > 1) {
-
-                throw new BusinessException(
-                        "Multiple vehicle license assigned for the vehicle : " +
-                                dailyRoute.getVehicle().getVehicleNumber(), "400"
-                );
-
             } else if (vehicleLicenses.getFirst().getDate() == null) {
 
                 VehicleLicense vehicleLicense = vehicleLicenses.getFirst();
