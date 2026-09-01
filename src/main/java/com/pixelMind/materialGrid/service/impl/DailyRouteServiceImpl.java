@@ -83,8 +83,10 @@ public class DailyRouteServiceImpl implements DailyRouteService {
             if (vehicleLicenses.isEmpty()) {
 
                 throw new BusinessException(
-                        "Vehicle license does not exists for the vehicle, Please assign a vehicle license for the vehicle : " +
-                                dailyRoute.getVehicle().getVehicleNumber(), "400"
+                        "No active vehicle license found for the vehicle " + dailyRoute.getVehicle().getVehicleNumber() +
+                                " covering the date " + dailyRoute.getDate() +
+                                ". Please assign a valid vehicle license that includes this daily route date range.",
+                        "400"
                 );
 
             } else if (vehicleLicenses.size() > 1) {
