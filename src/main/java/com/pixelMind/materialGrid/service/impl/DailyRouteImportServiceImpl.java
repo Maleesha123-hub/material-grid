@@ -189,7 +189,7 @@ public class DailyRouteImportServiceImpl implements DailyRouteImportService {
                         errors.add(
                                 error(
                                         raw.rowNumber(), "Vehicle Number", raw.vehicle.getVehicleNumber(),
-                                        "No active vehicle license found for the vehicle " + raw.vehicle +
+                                        "No active vehicle license found for the vehicle " + raw.vehicle.getVehicleNumber() +
                                                 " covering the date " + raw.date +
                                                 ". Please assign a valid vehicle license that includes this daily route date range."
                                 )
