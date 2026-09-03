@@ -9,4 +9,3 @@ spring:
       ddl-auto: none
   flyway:
     enabled: false
-#test
