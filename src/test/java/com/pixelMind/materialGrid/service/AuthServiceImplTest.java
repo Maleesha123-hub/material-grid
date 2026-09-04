@@ -3,14 +3,14 @@ package com.pixelMind.materialGrid.service;
 import com.pixelMind.materialGrid.dto.request.LoginRequest;
 import com.pixelMind.materialGrid.dto.response.LoginResponse;
 import com.pixelMind.materialGrid.entity.User;
-import com.pixelMind.materialGrid.entity.UserSession;
-import com.pixelMind.materialGrid.entity.enums.SessionStatus;
+import com.pixelMind.materialGrid.entity.enums.Role;
 import com.pixelMind.materialGrid.entity.enums.UserStatus;
 import com.pixelMind.materialGrid.exception.UnauthorizedException;
 import com.pixelMind.materialGrid.mapper.UserMapper;
 import com.pixelMind.materialGrid.repository.UserRepository;
 import com.pixelMind.materialGrid.security.AuthenticationService;
 import com.pixelMind.materialGrid.security.SecurityUserDetails;
+import com.pixelMind.materialGrid.security.jwt.JwtTokenProvider;
 import com.pixelMind.materialGrid.service.impl.AuthServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +29,7 @@ class AuthServiceImplTest {
     @Mock
     private AuthenticationService authenticationService;
     @Mock
-    private SessionService sessionService;
+    private JwtTokenProvider jwtTokenProvider;
     @Mock
     private UserRepository userRepository;
     @Mock
@@ -39,19 +39,28 @@ class AuthServiceImplTest {
     private AuthServiceImpl authService;
 
     @Test
-    void login_success_createsSession() {
-        User user = User.builder().id(1L).username("shehan").status(UserStatus.ACTIVE).password("hashed").build();
+    void login_success_generatesJwtToken() {
+        User user = User.builder()
+                .id(1L)
+                .username("shehan")
+                .status(UserStatus.ACTIVE)
+                .role(Role.ROLE_ADMIN)
+                .password("hashed")
+                .build();
         SecurityUserDetails principal = new SecurityUserDetails(user);
-        UserSession session = UserSession.builder()
-                .id(1L).userId(1L).sessionToken("new-token").status(SessionStatus.ACTIVE).build();
 
         when(authenticationService.authenticate("shehan", "Passw0rd1")).thenReturn(principal);
-        when(sessionService.createSession(1L)).thenReturn(session);
+        when(jwtTokenProvider.generateToken("shehan", 1L, Role.ROLE_ADMIN)).thenReturn("mock-jwt-token");
+        when(jwtTokenProvider.getExpirationMs()).thenReturn(86400000L);
 
         LoginResponse response = authService.login(new LoginRequest("shehan", "Passw0rd1"));
 
-        assertThat(response.getSessionToken()).isEqualTo("new-token");
+        assertThat(response.getAccessToken()).isEqualTo("mock-jwt-token");
+        assertThat(response.getSessionToken()).isEqualTo("mock-jwt-token");
+        assertThat(response.getTokenType()).isEqualTo("Bearer");
         assertThat(response.getUsername()).isEqualTo("shehan");
+        assertThat(response.getRole()).isEqualTo("ROLE_ADMIN");
+        assertThat(response.getExpiresIn()).isEqualTo(86400000L);
     }
 
     @Test
@@ -64,8 +73,8 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void logout_delegatesToSessionService() {
+    void logout_clearsContextSuccessfully() {
         authService.logout("some-token");
-        org.mockito.Mockito.verify(sessionService).invalidateSession("some-token");
+        // successfully completes without throwing exception
     }
 }

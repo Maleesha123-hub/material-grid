@@ -1,5 +1,6 @@
 package com.pixelMind.materialGrid.entity;
 
+import com.pixelMind.materialGrid.entity.enums.Role;
 import com.pixelMind.materialGrid.entity.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -30,6 +31,11 @@ public class User extends BaseAuditableEntity{
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private UserStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 20)
+    @Builder.Default
+    private Role role = Role.ROLE_USER;
 
     @Column(name = "deleted", nullable = false)
     @Builder.Default

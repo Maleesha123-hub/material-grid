@@ -5,6 +5,7 @@ import com.pixelMind.materialGrid.dto.request.UserCreateRequest;
 import com.pixelMind.materialGrid.dto.request.UserUpdateRequest;
 import com.pixelMind.materialGrid.dto.response.UserResponse;
 import com.pixelMind.materialGrid.entity.User;
+import com.pixelMind.materialGrid.entity.enums.Role;
 import com.pixelMind.materialGrid.entity.enums.UserStatus;
 import com.pixelMind.materialGrid.exception.DuplicateResourceException;
 import com.pixelMind.materialGrid.exception.ResourceNotFoundException;
@@ -40,17 +41,19 @@ public class UserServiceImpl implements UserService {
         }
 
         String actor = SecurityUtil.getCurrentUsername();
+        Role role = request.getRole() != null ? request.getRole() : Role.ROLE_USER;
 
         User user = User.builder()
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .status(UserStatus.ACTIVE)
+                .role(role)
                 .createdBy(actor)
                 .modifiedBy(actor)
                 .build();
 
         User saved = userRepository.save(user);
-        log.info("User created: username={}, by={}", saved.getUsername(), actor);
+        log.info("User created: username={}, role={}, by={}", saved.getUsername(), role, actor);
         return userMapper.toResponse(saved);
     }
 
@@ -76,6 +79,9 @@ public class UserServiceImpl implements UserService {
         }
         if (request.getStatus() != null) {
             user.setStatus(request.getStatus());
+        }
+        if (request.getRole() != null) {
+            user.setRole(request.getRole());
         }
         user.setModifiedBy(SecurityUtil.getCurrentUsername());
 

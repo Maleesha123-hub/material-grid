@@ -1,5 +1,6 @@
 package com.pixelMind.materialGrid.dto.request;
 
+import com.pixelMind.materialGrid.entity.enums.Role;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -24,4 +25,12 @@ public class UserCreateRequest {
             message = "Password must contain at least one uppercase letter, one lowercase letter and one digit"
     )
     private String password;
+
+    private Role role;
+
+    public UserCreateRequest(String username, String password) {
+        this.username = username;
+        this.password = password;
+        this.role = Role.ROLE_USER;
+    }
 }

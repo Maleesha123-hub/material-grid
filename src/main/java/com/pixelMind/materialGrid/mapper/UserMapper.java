@@ -15,6 +15,7 @@ public class UserMapper {
                 .id(user.getId())
                 .username(user.getUsername())
                 .status(user.getStatus())
+                .role(user.getRole())
                 .createdBy(user.getCreatedBy())
                 .createdDate(user.getCreatedDate())
                 .modifiedBy(user.getModifiedBy())

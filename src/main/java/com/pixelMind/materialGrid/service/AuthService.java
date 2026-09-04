@@ -8,7 +8,9 @@ public interface AuthService {
 
     LoginResponse login(LoginRequest request);
 
-    void logout(String sessionToken);
+    void logout(String token);
 
-    UserResponse getCurrentUser(String sessionToken);
+    UserResponse getCurrentUser();
+
+    UserResponse getCurrentUser(String token);
 }

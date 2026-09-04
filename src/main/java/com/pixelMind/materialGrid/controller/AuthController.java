@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Auth", description = "Authentication and session management")
+@Tag(name = "Auth", description = "Credentials authentication and JWT authorization")
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
@@ -22,21 +22,21 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @Operation(summary = "Login. Any existing active session for this user is invalidated.")
+    @Operation(summary = "Login with credentials, returns signed JWT access token")
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("Login successful", response));
     }
 
-    @Operation(summary = "Logout the current session")
+    @Operation(summary = "Logout the current user")
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
         authService.logout(extractToken(request));
         return ResponseEntity.ok(ApiResponse.success("Logout successful", null));
     }
 
-    @Operation(summary = "Get the currently authenticated user")
+    @Operation(summary = "Get the currently authenticated user profile")
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> me(HttpServletRequest request) {
         UserResponse response = authService.getCurrentUser(extractToken(request));

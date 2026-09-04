@@ -27,6 +27,7 @@ public class OpenApiConfig {
                                 .name(BEARER_SCHEME)
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
-                                .bearerFormat("opaque-session-token")));
+                                .bearerFormat("JWT")
+                                .description("Provide JWT access token obtained from /api/v1/auth/login")));
     }
 }

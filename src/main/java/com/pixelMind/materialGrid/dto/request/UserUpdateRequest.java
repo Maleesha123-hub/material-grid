@@ -1,5 +1,6 @@
 package com.pixelMind.materialGrid.dto.request;
 
+import com.pixelMind.materialGrid.entity.enums.Role;
 import com.pixelMind.materialGrid.entity.enums.UserStatus;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -21,4 +22,11 @@ public class UserUpdateRequest {
     private String password;
 
     private UserStatus status;
+
+    private Role role;
+
+    public UserUpdateRequest(String password, UserStatus status) {
+        this.password = password;
+        this.status = status;
+    }
 }
