@@ -156,17 +156,23 @@ public class PersonVehicleDetailPdfServiceImpl implements PersonVehicleDetailPdf
         }
 
         PdfPCell totalLabelCell = new PdfPCell(new Phrase("Total", TOTAL_ROW_FONT));
-        totalLabelCell.setColspan(4);
+        totalLabelCell.setColspan(3);
         totalLabelCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
         totalLabelCell.setBackgroundColor(HIGHLIGHT_BG);
         totalLabelCell.setPadding(6f);
         table.addCell(totalLabelCell);
 
-        PdfPCell totalValueCell = new PdfPCell(new Phrase(MoneyFormatUtil.format(receipt.getGrandTotalCapacity()), TOTAL_ROW_FONT));
-        totalValueCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        PdfPCell totalValueCell = new PdfPCell(new Phrase(String.valueOf(receipt.getGrandTotalLoadCount()), TOTAL_ROW_FONT));
+        totalValueCell.setHorizontalAlignment(Element.ALIGN_CENTER);
         totalValueCell.setBackgroundColor(HIGHLIGHT_BG);
         totalValueCell.setPadding(6f);
         table.addCell(totalValueCell);
+
+        PdfPCell totalCapValueCell = new PdfPCell(new Phrase(MoneyFormatUtil.format(receipt.getGrandTotalCapacity()), TOTAL_ROW_FONT));
+        totalCapValueCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        totalCapValueCell.setBackgroundColor(HIGHLIGHT_BG);
+        totalCapValueCell.setPadding(6f);
+        table.addCell(totalCapValueCell);
 
         document.add(table);
     }
