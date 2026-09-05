@@ -67,6 +67,11 @@ public class PersonVehicleDetailReportServiceImpl implements PersonVehicleDetail
             grandTotal = grandTotal.add(row.getTotalVehicleCapacity());
         }
 
+        int grandTotalLoadCount = 0;
+        for (PersonVehicleDetailReceiptRow row : rows) {
+            grandTotalLoadCount = grandTotalLoadCount + row.getLoadCount();
+        }
+
         log.info("Person vehicle detail receipt generated: personId={}, startDate={}, endDate={}, rows={}, grandTotal={}",
                 personId, startDate, endDate, rows.size(), grandTotal);
 
@@ -77,6 +82,7 @@ public class PersonVehicleDetailReportServiceImpl implements PersonVehicleDetail
                 .endDate(endDate)
                 .rows(rows)
                 .grandTotalCapacity(grandTotal)
+                .grandTotalLoadCount(grandTotalLoadCount)
                 .build();
     }
 

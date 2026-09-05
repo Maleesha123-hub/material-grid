@@ -19,4 +19,5 @@ public class PersonVehicleDetailReceipt {
 
     private List<PersonVehicleDetailReceiptRow> rows;
     private BigDecimal grandTotalCapacity;
+    private int grandTotalLoadCount;
 }

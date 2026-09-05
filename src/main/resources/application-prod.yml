@@ -21,9 +21,9 @@ spring:
           time_zone: Asia/Colombo
 
   flyway:
-    enabled: false
+    enabled: true
     locations: classpath:db/migration
-    baseline-on-migrate: false
+    baseline-on-migrate: true
 
 server:
   port: 8080
